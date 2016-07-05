@@ -249,6 +249,49 @@ public class FilterTest {
     a.seek(new Range(), EMPTY_COL_FAMS, false);
     assertEquals(size(a), 902);
   }
+  
+  /**
+   * Test for fix to ACCUMULO-1604: ColumnAgeOffFilter was throwing an error when using negate
+   * 
+   * @throws IOException
+   */
+  @Test
+  public void test2aNegate() throws IOException {
+    Text colf = new Text("a");
+    Text colq = new Text("b");
+    Value dv = new Value();
+    TreeMap<Key,Value> tm = new TreeMap<Key,Value>();
+    IteratorSetting is = new IteratorSetting(1, ColumnAgeOffFilter.class);
+    ColumnAgeOffFilter.addTTL(is, new IteratorSetting.Column("a"), 901l);
+    ColumnAgeOffFilter.setNegate(is, true);
+    long ts = System.currentTimeMillis();
+
+    for (long i = 0; i < 1000; i++) {
+      Key k = new Key(new Text(String.format("%03d", i)), colf, colq, ts - i);
+      tm.put(k, dv);
+    }
+    assertTrue(tm.size() == 1000);
+
+    ColumnAgeOffFilter a = new ColumnAgeOffFilter();
+    assertTrue(a.validateOptions(is.getOptions()));
+    a.init(new SortedMapIterator(tm), is.getOptions(), new DefaultIteratorEnvironment());
+    a.overrideCurrentTime(ts);
+    a.seek(new Range(), EMPTY_COL_FAMS, false);
+    assertEquals(size(a), 98);
+
+    ColumnAgeOffFilter.addTTL(is, new IteratorSetting.Column("a", "b"), 101l);
+    a.init(new SortedMapIterator(tm), is.getOptions(), new DefaultIteratorEnvironment());
+    a.overrideCurrentTime(ts);
+    a.seek(new Range(), EMPTY_COL_FAMS, false);
+    assertEquals(size(a), 898);
+
+    ColumnAgeOffFilter.removeTTL(is, new IteratorSetting.Column("a", "b"));
+    a.init(new SortedMapIterator(tm), is.getOptions(), new DefaultIteratorEnvironment());
+    a = (ColumnAgeOffFilter) a.deepCopy(null);
+    a.overrideCurrentTime(ts);
+    a.seek(new Range(), EMPTY_COL_FAMS, false);
+    assertEquals(size(a), 98);
+  }
 
   @Test
   public void test3() throws IOException {
