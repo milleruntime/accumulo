@@ -292,7 +292,8 @@ public class FilterTest {
   }
 
   /**
-   * Test for fix to ACCUMULO-1604: ColumnAgeOffFilter was throwing an error when using negate Test case for when "negate" is the column name
+   * Test for fix to ACCUMULO-1604: ColumnAgeOffFilter was throwing an error when using negate 
+   * Test case for when "negate" is an actual column name
    */
   @Test
   public void test2b() throws IOException {
