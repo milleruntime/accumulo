@@ -44,7 +44,7 @@ public class ColumnAgeOffFilter extends Filter {
         String column = entry.getKey();
         String ttl = entry.getValue();
         // skip the negate option, it will cause an exception to be thrown
-        if (column.equals(NEGATE))
+        if (column.equalsIgnoreCase(NEGATE) && (ttl.equalsIgnoreCase("true") || ttl.equalsIgnoreCase("false")))
           continue;
         Long l = Long.parseLong(ttl);
 
