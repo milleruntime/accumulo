@@ -146,4 +146,11 @@ public class DigestIterator implements SortedKeyValueIterator<Key,Value> {
     return copy;
   }
 
+  @Override
+  public void close() throws Exception {
+    if (source != null) {
+      source.close();
+    }
+  }
+
 }

@@ -181,4 +181,15 @@ public class ChunkCombiner implements SortedKeyValueIterator<Key,Value> {
     }
     return cc;
   }
+
+  @Override
+  public void close() throws Exception {
+    if (source != null) {
+      source.close();
+    }
+    if (refsSource != null) {
+      refsSource.close();
+    }
+  }
+
 }

@@ -89,4 +89,11 @@ public class ColumnFamilyCounter implements SortedKeyValueIterator<Key,Value> {
     return null;
   }
 
+  @Override
+  public void close() throws Exception {
+    if (source != null) {
+      source.close();
+    }
+  }
+
 }

@@ -17,6 +17,7 @@
 package org.apache.accumulo.core.iterators.user;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
@@ -82,7 +83,7 @@ public class IntersectingIterator implements SortedKeyValueIterator<Key,Value> {
     return key.followingKey(PartialKey.ROW);
   }
 
-  public static class TermSource {
+  public static class TermSource implements AutoCloseable {
     public SortedKeyValueIterator<Key,Value> iter;
     public Text term;
     public Collection<ByteSequence> seekColfams;
@@ -109,6 +110,19 @@ public class IntersectingIterator implements SortedKeyValueIterator<Key,Value> {
 
     public String getTermString() {
       return (this.term == null) ? "Iterator" : this.term.toString();
+    }
+
+    @Override
+    public void close() throws Exception {
+      this.iter.close();
+    }
+
+    public void closeSafely() {
+      try {
+        this.close();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
@@ -545,5 +559,10 @@ public class IntersectingIterator implements SortedKeyValueIterator<Key,Value> {
       throw new IllegalArgumentException("columns and notFlags arrays must be the same length");
     setColumnFamilies(cfg, columns);
     cfg.addOption(IntersectingIterator.notFlagOptionName, IntersectingIterator.encodeBooleans(notFlags));
+  }
+
+  @Override
+  public void close() throws Exception {
+    Arrays.stream(sources).forEach(s -> s.closeSafely());
   }
 }

@@ -44,7 +44,7 @@ public class OrIterator implements SortedKeyValueIterator<Key,Value> {
   private static final Text nullText = new Text();
   private static final Key nullKey = new Key();
 
-  protected static class TermSource implements Comparable<TermSource> {
+  protected static class TermSource implements Comparable<TermSource>, AutoCloseable {
     public SortedKeyValueIterator<Key,Value> iter;
     public Text term;
     public Collection<ByteSequence> seekColfams;
@@ -79,6 +79,19 @@ public class OrIterator implements SortedKeyValueIterator<Key,Value> {
       // NOTE2: A null check is not needed because things are only added to the
       // sorted after they have been determined to be valid.
       return this.iter.getTopKey().compareColumnQualifier(o.iter.getTopKey().getColumnQualifier());
+    }
+
+    @Override
+    public void close() throws Exception {
+      this.iter.close();
+    }
+
+    public void closeSafely() {
+      try {
+        this.close();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
@@ -219,8 +232,14 @@ public class OrIterator implements SortedKeyValueIterator<Key,Value> {
       // 1) NOT an iterator
       // 2) we have seeked into the next term (ie: seek man, get man001)
       // then ignore it as a valid source
-      if (!(TS.iter.hasTop()) || ((TS.term != null) && (TS.term.compareTo(TS.iter.getTopKey().getColumnFamily()) != 0)))
+      if (!(TS.iter.hasTop()) || ((TS.term != null) && (TS.term.compareTo(TS.iter.getTopKey().getColumnFamily()) != 0))) {
+        try {
+          TS.close();
+        } catch (Exception e) {
+          throw new IOException(e);
+        }
         iter.remove();
+      }
 
       // Otherwise, source is valid. Add it to the sources.
       sorted.add(TS);
@@ -248,5 +267,10 @@ public class OrIterator implements SortedKeyValueIterator<Key,Value> {
   @Override
   public void init(SortedKeyValueIterator<Key,Value> source, Map<String,String> options, IteratorEnvironment env) throws IOException {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void close() throws Exception {
+    sources.forEach(s -> s.closeSafely());
   }
 }

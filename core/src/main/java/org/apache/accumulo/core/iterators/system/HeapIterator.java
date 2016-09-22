@@ -130,4 +130,14 @@ public abstract class HeapIterator implements SortedKeyValueIterator<Key,Value> 
       pullReferencesFromHeap();
     }
   }
+
+  @Override
+  public void close() throws Exception {
+    if (heap != null) {
+      heap.forEach(skvi -> skvi.closeSafely());
+    }
+    if (topIdx != null) {
+      topIdx.close();
+    }
+  }
 }

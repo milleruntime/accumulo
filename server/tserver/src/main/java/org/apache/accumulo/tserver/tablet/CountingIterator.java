@@ -75,4 +75,10 @@ public class CountingIterator extends WrappingIterator {
 
     return count + sum;
   }
+
+  @Override
+  public void close() throws Exception {
+    super.close();
+    deepCopies.forEach(s -> s.closeSafely());
+  }
 }

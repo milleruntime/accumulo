@@ -162,6 +162,14 @@ public class SourceSwitchingIterator implements InterruptibleIterator {
   private boolean switchSource() throws IOException {
     if (!source.isCurrent()) {
       source = source.getNewDataSource();
+      // if our source actually changed, then attempt to close the previous iterator
+      try {
+        if (iter != null) {
+          iter.close();
+        }
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
       iter = source.iterator();
       return true;
     }
@@ -213,4 +221,13 @@ public class SourceSwitchingIterator implements InterruptibleIterator {
       source.setInterruptFlag(flag);
     }
   }
+
+  @Override
+  public void close() throws Exception {
+    copies.forEach(ssi -> ssi.closeSafely());
+    if (iter != null) {
+      iter.close();
+    }
+  }
+
 }

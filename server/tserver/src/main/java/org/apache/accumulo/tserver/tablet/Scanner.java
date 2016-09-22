@@ -61,39 +61,27 @@ public class Scanner {
     Batch results = null;
 
     try {
+      scannerSemaphore.acquire();
+    } catch (InterruptedException e) {
+      sawException = true;
+    }
 
-      try {
-        scannerSemaphore.acquire();
-      } catch (InterruptedException e) {
-        sawException = true;
-      }
+    // sawException may have occurred within close, so we cannot assume that an interrupted exception was its cause
+    if (sawException)
+      throw new IllegalStateException("Tried to use scanner after exception occurred.");
 
-      // sawException may have occurred within close, so we cannot assume that an interrupted exception was its cause
-      if (sawException)
-        throw new IllegalStateException("Tried to use scanner after exception occurred.");
+    if (scanClosed)
+      throw new IllegalStateException("Tried to use scanner after it was closed.");
 
-      if (scanClosed)
-        throw new IllegalStateException("Tried to use scanner after it was closed.");
+    if (options.isIsolated()) {
+      if (isolatedDataSource == null)
+        isolatedDataSource = new ScanDataSource(tablet, options);
+      dataSource = isolatedDataSource;
+    } else {
+      dataSource = new ScanDataSource(tablet, options);
+    }
 
-      if (options.isIsolated()) {
-        if (isolatedDataSource == null)
-          isolatedDataSource = new ScanDataSource(tablet, options);
-        dataSource = isolatedDataSource;
-      } else {
-        dataSource = new ScanDataSource(tablet, options);
-      }
-
-      SortedKeyValueIterator<Key,Value> iter;
-
-      if (options.isIsolated()) {
-        if (isolatedIter == null)
-          isolatedIter = new SourceSwitchingIterator(dataSource, true);
-        else
-          isolatedDataSource.reattachFileManager();
-        iter = isolatedIter;
-      } else {
-        iter = new SourceSwitchingIterator(dataSource, false);
-      }
+    try (SortedKeyValueIterator<Key,Value> iter = createIter(dataSource)) {
 
       results = tablet.nextBatch(iter, range, options.getNum(), options.getColumnSet(), options.getBatchTimeOut());
 
@@ -120,16 +108,15 @@ public class Scanner {
       }
 
       sawException = true;
-      dataSource.close(true);
       throw ioe;
-    } catch (RuntimeException re) {
+    } catch (Exception e) {
       sawException = true;
-      throw re;
+      throw new RuntimeException(e);
     } finally {
       // code in finally block because always want
       // to return mapfiles, even when exception is thrown
       if (null != dataSource && !options.isIsolated()) {
-        dataSource.close(false);
+        dataSource.close(sawException);
       } else if (null != dataSource) {
         dataSource.detachFileManager();
       }
@@ -138,6 +125,18 @@ public class Scanner {
         tablet.updateQueryStats(results.getResults().size(), results.getNumBytes());
 
       scannerSemaphore.release();
+    }
+  }
+
+  private SortedKeyValueIterator<Key,Value> createIter(ScanDataSource dataSource) throws IOException {
+    if (options.isIsolated()) {
+      if (isolatedIter == null)
+        isolatedIter = new SourceSwitchingIterator(dataSource, true);
+      else
+        isolatedDataSource.reattachFileManager();
+      return isolatedIter;
+    } else {
+      return new SourceSwitchingIterator(dataSource, false);
     }
   }
 
@@ -156,7 +155,10 @@ public class Scanner {
       scanClosed = true;
       if (isolatedDataSource != null)
         isolatedDataSource.close(false);
-    } catch (InterruptedException e) {
+      if (isolatedIter != null) {
+        isolatedIter.close();
+      }
+    } catch (Exception e) {
       return false;
     } finally {
       if (obtainedLock)

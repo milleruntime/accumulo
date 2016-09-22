@@ -30,7 +30,7 @@ import org.apache.hadoop.io.WritableComparable;
  * An iterator that supports iterating over key and value pairs. Anything implementing this interface should return keys in sorted order.
  */
 
-public interface SortedKeyValueIterator<K extends WritableComparable<?>,V extends Writable> {
+public interface SortedKeyValueIterator<K extends WritableComparable<?>,V extends Writable> extends AutoCloseable {
   /**
    * Initializes the iterator. Data should not be read from the source in this method.
    *
@@ -147,4 +147,25 @@ public interface SortedKeyValueIterator<K extends WritableComparable<?>,V extend
    *              if not supported.
    */
   SortedKeyValueIterator<K,V> deepCopy(IteratorEnvironment env);
+
+  /**
+   * Closes the Iterator. This must be overridden by the implementing class that has access to <tt>SortedKeyValueIterator source</tt> provided in the
+   * <tt>init</tt> method.
+   */
+  @Override
+  default void close() throws Exception {
+    // default implementation, do nothing
+  }
+
+  /**
+   * Wrapper for handling checked Exception. This is useful for calling close in Java 8 stream. For example, close all the SortedKeyValueIterators in the heap:
+   * heap.forEach(skvi -> skvi.closeSafely());
+   */
+  default void closeSafely() {
+    try {
+      this.close();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
 }

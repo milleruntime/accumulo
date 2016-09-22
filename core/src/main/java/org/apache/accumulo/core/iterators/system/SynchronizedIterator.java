@@ -76,4 +76,9 @@ public class SynchronizedIterator<K extends WritableComparable<?>,V extends Writ
   public SynchronizedIterator(SortedKeyValueIterator<K,V> source) {
     this.source = source;
   }
+
+  @Override
+  public synchronized void close() throws Exception {
+    source.close();
+  }
 }

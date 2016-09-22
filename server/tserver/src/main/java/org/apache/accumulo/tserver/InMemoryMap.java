@@ -614,12 +614,15 @@ public class InMemoryMap {
 
       if (!isCurrent()) {
         switched = true;
-        iter = null;
         try {
+          if (iter != null) {
+            iter.close();
+          }
+          iter = null;
           // ensure files are referenced even if iterator was never seeked before
           iterator();
-        } catch (IOException e) {
-          throw new RuntimeException();
+        } catch (Exception e) {
+          throw new RuntimeException(e);
         }
       }
 
@@ -709,9 +712,10 @@ public class InMemoryMap {
       synchronized (this) {
         if (closed.compareAndSet(false, true)) {
           try {
+            super.close();
             if (mds.reader != null)
               mds.reader.close();
-          } catch (IOException e) {
+          } catch (Exception e) {
             log.warn("{}", e.getMessage(), e);
           }
         }
