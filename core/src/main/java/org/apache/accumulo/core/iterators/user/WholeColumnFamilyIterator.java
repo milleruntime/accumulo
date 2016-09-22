@@ -268,4 +268,9 @@ public class WholeColumnFamilyIterator
     return true;
   }
 
+  @Override
+  public void close() {
+    sourceIter.close();
+  }
+
 }

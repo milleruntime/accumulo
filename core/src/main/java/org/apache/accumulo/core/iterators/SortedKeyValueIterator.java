@@ -166,4 +166,21 @@ public interface SortedKeyValueIterator<K extends WritableComparable<?>,V extend
    *              if not supported.
    */
   SortedKeyValueIterator<K,V> deepCopy(IteratorEnvironment env);
+
+  /**
+   * Closes any resources that were opened by the <tt>SortedKeyValueIterator</tt>. This method does nothing by default. The implementing class must close its
+   * <tt>SortedKeyValueIterator source</tt>. This will be provided in the <tt>init</tt> method or by the constructor.
+   *
+   * @exception UncheckedIOException
+   *              if an I/O error occurs.
+   * @exception UnsupportedOperationException
+   *              if not supported
+   * @exception RuntimeException
+   *              if another type of error occurs
+   * @since 2.0.0
+   */
+  @Override
+  default void close() {
+    // default implementation, do nothing
+  }
 }

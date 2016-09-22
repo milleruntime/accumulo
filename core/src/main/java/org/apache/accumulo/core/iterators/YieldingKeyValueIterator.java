@@ -22,7 +22,7 @@ import org.apache.hadoop.io.WritableComparable;
 /**
  * An iterator that supports yielding on a next or seek call (only used by SortedKeyValueIterators)
  */
-public interface YieldingKeyValueIterator<K extends WritableComparable<?>,V extends Writable> {
+public interface YieldingKeyValueIterator<K extends WritableComparable<?>,V extends Writable> extends AutoCloseable{
 
   /**
    * Allows implementations to preempt further iteration of this iterator in the current RPC.

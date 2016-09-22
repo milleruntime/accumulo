@@ -237,4 +237,11 @@ public class IndexedDocIterator extends IntersectingIterator {
     setIndexColf(is, indexColf);
     setDocColfPrefix(is, docColfPrefix);
   }
+
+  @Override
+  public void close() {
+    super.close();
+    docSource.close();
+  }
+
 }

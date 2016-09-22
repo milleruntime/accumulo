@@ -225,4 +225,9 @@ public abstract class RowEncodingIterator
     prepKeys();
   }
 
+  @Override
+  public void close() {
+    sourceIter.close();
+  }
+
 }

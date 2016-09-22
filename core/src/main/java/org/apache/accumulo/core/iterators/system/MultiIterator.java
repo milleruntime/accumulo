@@ -111,4 +111,10 @@ public class MultiIterator extends HeapIterator {
       IteratorEnvironment env) throws IOException {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public void close() {
+    // do nothing to prevent closing of resources that may be reused
+  }
+
 }

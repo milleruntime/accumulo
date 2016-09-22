@@ -66,4 +66,9 @@ public class ValueReversingIterator implements SortedKeyValueIterator<Key,Value>
       throws IOException {
     source.seek(range, columnFamilies, inclusive);
   }
+
+  @Override
+  public void close() {
+    source.close();
+  }
 }

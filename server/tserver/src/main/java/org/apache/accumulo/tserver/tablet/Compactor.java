@@ -402,7 +402,6 @@ public class Compactor implements Callable<CompactionStats> {
           }
           throw new CompactionCanceledException();
         }
-
       } finally {
         CompactionStats lgMajcStats = new CompactionStats(citr.getCount(), entriesCompacted);
         majCStats.add(lgMajcStats);
