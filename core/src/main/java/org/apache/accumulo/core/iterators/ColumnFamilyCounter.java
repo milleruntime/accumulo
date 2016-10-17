@@ -90,7 +90,7 @@ public class ColumnFamilyCounter implements SortedKeyValueIterator<Key,Value> {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     if (source != null) {
       source.close();
     }

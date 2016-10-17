@@ -259,7 +259,7 @@ public class WholeColumnFamilyIterator implements SortedKeyValueIterator<Key,Val
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     sourceIter.close();
   }
 

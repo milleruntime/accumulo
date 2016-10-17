@@ -132,9 +132,9 @@ public abstract class HeapIterator implements SortedKeyValueIterator<Key,Value> 
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     if (heap != null) {
-      heap.forEach(skvi -> skvi.closeSafely());
+      heap.forEach(skvi -> skvi.close());
     }
     if (topIdx != null) {
       topIdx.close();

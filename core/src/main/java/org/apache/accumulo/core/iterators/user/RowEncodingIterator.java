@@ -209,7 +209,7 @@ public abstract class RowEncodingIterator implements SortedKeyValueIterator<Key,
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     sourceIter.close();
   }
 

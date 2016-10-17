@@ -113,16 +113,8 @@ public class IntersectingIterator implements SortedKeyValueIterator<Key,Value> {
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
       this.iter.close();
-    }
-
-    public void closeSafely() {
-      try {
-        this.close();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
     }
   }
 
@@ -562,7 +554,7 @@ public class IntersectingIterator implements SortedKeyValueIterator<Key,Value> {
   }
 
   @Override
-  public void close() throws Exception {
-    Arrays.stream(sources).forEach(s -> s.closeSafely());
+  public void close() {
+    Arrays.stream(sources).forEach(s -> s.close());
   }
 }

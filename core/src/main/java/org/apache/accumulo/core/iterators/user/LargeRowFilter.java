@@ -286,7 +286,7 @@ public class LargeRowFilter implements SortedKeyValueIterator<Key,Value>, Option
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     source.close();
   }
 }

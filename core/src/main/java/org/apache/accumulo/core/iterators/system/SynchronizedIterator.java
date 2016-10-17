@@ -78,7 +78,7 @@ public class SynchronizedIterator<K extends WritableComparable<?>,V extends Writ
   }
 
   @Override
-  public synchronized void close() throws Exception {
+  public synchronized void close() {
     source.close();
   }
 }

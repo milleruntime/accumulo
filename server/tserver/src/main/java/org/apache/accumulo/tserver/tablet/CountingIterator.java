@@ -77,8 +77,8 @@ public class CountingIterator extends WrappingIterator {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     super.close();
-    deepCopies.forEach(s -> s.closeSafely());
+    deepCopies.forEach(s -> s.close());
   }
 }

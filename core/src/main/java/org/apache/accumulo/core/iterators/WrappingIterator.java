@@ -95,7 +95,7 @@ public abstract class WrappingIterator implements SortedKeyValueIterator<Key,Val
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     getSource().close();
   }
 }

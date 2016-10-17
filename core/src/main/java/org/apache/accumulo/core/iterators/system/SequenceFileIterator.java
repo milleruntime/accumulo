@@ -104,8 +104,12 @@ public class SequenceFileIterator implements FileSKVIterator {
   }
 
   @Override
-  public void close() throws IOException {
-    reader.close();
+  public void close() {
+    try {
+      reader.close();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

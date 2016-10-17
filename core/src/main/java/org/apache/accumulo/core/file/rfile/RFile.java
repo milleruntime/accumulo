@@ -708,12 +708,15 @@ public class RFile {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
       closed = true;
       hasTop = false;
-      if (currBlock != null)
-        currBlock.close();
-
+      try {
+        if (currBlock != null)
+          currBlock.close();
+      } catch (IOException e) {
+        log.warn("Errored out attempting to close LocalityGroupReader.", e);
+      }
     }
 
     private IndexIterator iiter;
@@ -1164,11 +1167,7 @@ public class RFile {
 
     private void closeLocalityGroupReaders() {
       for (LocalityGroupReader lgr : currentReaders) {
-        try {
-          lgr.close();
-        } catch (IOException e) {
-          log.warn("Errored out attempting to close LocalityGroupReader.", e);
-        }
+        lgr.close();
       }
     }
 
@@ -1184,7 +1183,7 @@ public class RFile {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
       if (deepCopy)
         throw new RuntimeException("Calling close on a deep copy is not supported");
 
@@ -1193,16 +1192,14 @@ public class RFile {
 
       if (sampleReaders != null) {
         for (LocalityGroupReader lgr : sampleReaders) {
-          try {
-            lgr.close();
-          } catch (IOException e) {
-            log.warn("Errored out attempting to close LocalityGroupReader.", e);
-          }
+          lgr.close();
         }
       }
 
       try {
         reader.close();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       } finally {
         /**
          * input Stream is passed to CachableBlockFile and closed there

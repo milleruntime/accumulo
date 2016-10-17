@@ -153,19 +153,7 @@ public interface SortedKeyValueIterator<K extends WritableComparable<?>,V extend
    * <tt>init</tt> method.
    */
   @Override
-  default void close() throws Exception {
+  default void close() {
     // default implementation, do nothing
-  }
-
-  /**
-   * Wrapper for handling checked Exception. This is useful for calling close in Java 8 stream. For example, close all the SortedKeyValueIterators in the heap:
-   * heap.forEach(skvi -> skvi.closeSafely());
-   */
-  default void closeSafely() {
-    try {
-      this.close();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
   }
 }

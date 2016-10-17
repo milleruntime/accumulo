@@ -65,7 +65,7 @@ class MultiIndexIterator extends HeapIterator implements FileSKVIterator {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     source.close();
   }
 

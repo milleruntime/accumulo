@@ -368,7 +368,7 @@ public class BloomFilterLayer {
     }
 
     @Override
-    public synchronized void close() throws IOException {
+    public synchronized void close() {
       bfl.close();
       reader.close();
     }

@@ -230,7 +230,7 @@ public class IndexedDocIterator extends IntersectingIterator {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     super.close();
     docSource.close();
   }

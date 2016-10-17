@@ -51,7 +51,7 @@ public class MapFileOperations extends FileOperations {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
       ((FileSKVIterator) reader).close();
     }
 

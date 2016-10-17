@@ -119,7 +119,7 @@ public class ProblemReportingIterator implements InterruptibleIterator {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     source.close();
   }
 }

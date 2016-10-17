@@ -223,8 +223,10 @@ public class SourceSwitchingIterator implements InterruptibleIterator {
   }
 
   @Override
-  public void close() throws Exception {
-    copies.forEach(ssi -> ssi.closeSafely());
+  public void close() {
+    synchronized (copies) {
+      copies.forEach(ssi -> ssi.close());
+    }
     if (iter != null) {
       iter.close();
     }

@@ -267,7 +267,7 @@ public class ClientSideIteratorScanner extends ScannerOptions implements Scanner
 
       skvi.seek(range, colfs, true);
       return new IteratorAdapter(skvi);
-    } catch (Exception e) {
+    } catch (IOException e) {
       throw new RuntimeException(e);
     }
   }

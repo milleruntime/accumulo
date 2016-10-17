@@ -303,7 +303,7 @@ abstract public class TransformingIterator extends WrappingIterator implements O
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
       source.close();
     }
 
