@@ -149,7 +149,7 @@ public interface SortedKeyValueIterator<K extends WritableComparable<?>,V extend
   SortedKeyValueIterator<K,V> deepCopy(IteratorEnvironment env);
 
   /**
-   * Closes the Iterator. This must be overridden by the implementing class that has access to <tt>SortedKeyValueIterator source</tt> provided in the
+   * Closes the Iterator. This should be overridden by the implementing class that has access to <tt>SortedKeyValueIterator source</tt> provided in the
    * <tt>init</tt> method.
    */
   @Override
