@@ -24,6 +24,7 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1199,7 +1200,7 @@ public class RFile {
       try {
         reader.close();
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        throw new UncheckedIOException(e);
       } finally {
         /**
          * input Stream is passed to CachableBlockFile and closed there
