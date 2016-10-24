@@ -163,12 +163,8 @@ public class SourceSwitchingIterator implements InterruptibleIterator {
     if (!source.isCurrent()) {
       source = source.getNewDataSource();
       // if our source actually changed, then attempt to close the previous iterator
-      try {
-        if (iter != null) {
-          iter.close();
-        }
-      } catch (Exception e) {
-        throw new IOException(e);
+      if (iter != null) {
+        iter.close();
       }
       iter = source.iterator();
       return true;

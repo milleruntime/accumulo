@@ -389,8 +389,6 @@ public class Compactor implements Callable<CompactionStats> {
           }
           throw new CompactionCanceledException();
         }
-      } catch (Exception e) {
-        throw new IOException(e);
       } finally {
         CompactionStats lgMajcStats = new CompactionStats(statsCount, entriesCompacted);
         majCStats.add(lgMajcStats);

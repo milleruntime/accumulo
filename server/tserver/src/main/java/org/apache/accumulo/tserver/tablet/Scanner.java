@@ -109,9 +109,9 @@ public class Scanner {
 
       sawException = true;
       throw ioe;
-    } catch (Exception e) {
+    } catch (RuntimeException re) {
       sawException = true;
-      throw new RuntimeException(e);
+      throw re;
     } finally {
       // code in finally block because always want
       // to return mapfiles, even when exception is thrown
