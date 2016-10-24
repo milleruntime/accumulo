@@ -136,6 +136,7 @@ public class FileUtil {
       List<SortedKeyValueIterator<Key,Value>> iters = new ArrayList<>(inFiles.size());
 
       FileSKVIterator reader = null;
+      MultiIterator mmfi = null;
       try {
         for (String s : inFiles) {
           ns = fs.getVolumeByPath(new Path(s)).getFileSystem();
@@ -143,7 +144,7 @@ public class FileUtil {
           iters.add(reader);
         }
 
-        MultiIterator mmfi = new MultiIterator(iters, true);
+        mmfi = new MultiIterator(iters, true);
 
         while (mmfi.hasTop()) {
           Key key = mmfi.getTopKey();
@@ -159,11 +160,13 @@ public class FileUtil {
 
           mmfi.next();
         }
+
       } finally {
         try {
+          mmfi.close();
           if (reader != null)
             reader.close();
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
           log.error("{}", e.getMessage(), e);
         }
 
@@ -171,7 +174,7 @@ public class FileUtil {
           try {
             if (r != null)
               ((FileSKVIterator) r).close();
-          } catch (Exception e) {
+          } catch (RuntimeException e) {
             // continue closing
             log.error("{}", e.getMessage(), e);
           }
@@ -202,6 +205,7 @@ public class FileUtil {
 
     int maxToOpen = acuconf.getCount(Property.TSERV_TABLET_SPLIT_FINDMIDPOINT_MAXOPEN);
     ArrayList<FileSKVIterator> readers = new ArrayList<>(mapFiles.size());
+    MultiIterator mmfi = null;
 
     try {
       if (mapFiles.size() > maxToOpen) {
@@ -230,7 +234,7 @@ public class FileUtil {
       }
 
       List<SortedKeyValueIterator<Key,Value>> iters = new ArrayList<>(readers);
-      MultiIterator mmfi = new MultiIterator(iters, true);
+      mmfi = new MultiIterator(iters, true);
 
       // skip the prevendrow
       while (mmfi.hasTop() && mmfi.getTopKey().compareRow(prevEndRow) <= 0) {
@@ -253,6 +257,9 @@ public class FileUtil {
       return (numLte + 1) / (double) (numKeys + 2);
 
     } finally {
+      if (mmfi != null) {
+        mmfi.close();
+      }
       cleanupIndexOp(acuconf, tmpDir, fs, readers);
     }
   }
@@ -275,6 +282,7 @@ public class FileUtil {
 
     int maxToOpen = acuConf.getCount(Property.TSERV_TABLET_SPLIT_FINDMIDPOINT_MAXOPEN);
     ArrayList<FileSKVIterator> readers = new ArrayList<>(mapFiles.size());
+    MultiIterator mmfi = null;
 
     try {
       if (mapFiles.size() > maxToOpen) {
@@ -311,7 +319,7 @@ public class FileUtil {
       }
 
       List<SortedKeyValueIterator<Key,Value>> iters = new ArrayList<>(readers);
-      MultiIterator mmfi = new MultiIterator(iters, true);
+      mmfi = new MultiIterator(iters, true);
 
       // skip the prevendrow
       while (mmfi.hasTop() && mmfi.getTopKey().compareRow(prevEndRow) <= 0)
@@ -361,6 +369,9 @@ public class FileUtil {
 
       return ret;
     } finally {
+      if (mmfi != null) {
+        mmfi.close();
+      }
       cleanupIndexOp(acuConf, tmpDir, fs, readers);
     }
   }
@@ -371,7 +382,7 @@ public class FileUtil {
       try {
         if (r != null)
           r.close();
-      } catch (Exception e) {
+      } catch (RuntimeException e) {
         // okay, try to close the rest anyway
         log.error("{}", e.getMessage(), e);
       }
@@ -418,7 +429,7 @@ public class FileUtil {
         try {
           if (reader != null)
             reader.close();
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
           log.error("{}", e.getMessage(), e);
         }
       }
@@ -457,7 +468,7 @@ public class FileUtil {
         if (reader != null) {
           try {
             reader.close();
-          } catch (Exception ioe) {
+          } catch (RuntimeException ioe) {
             log.warn("failed to close " + mapfile, ioe);
           }
         }
@@ -494,7 +505,7 @@ public class FileUtil {
         try {
           if (reader != null)
             reader.close();
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
           log.error("{}", e.getMessage(), e);
         }
       }
@@ -541,7 +552,7 @@ public class FileUtil {
       try {
         if (index != null)
           index.close();
-      } catch (Exception e) {
+      } catch (RuntimeException e) {
         // continue with next file
         log.error("{}", e.getMessage(), e);
       }
