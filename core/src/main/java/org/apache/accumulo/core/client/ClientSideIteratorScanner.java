@@ -257,19 +257,26 @@ public class ClientSideIteratorScanner extends ScannerOptions implements Scanner
       tm.put(iterInfo.getPriority(), iterInfo);
     }
 
-    try (SortedKeyValueIterator<Key,Value> skvi = IteratorUtil.loadIterators(smi, tm.values(), serverSideIteratorOptions, new ClientSideIteratorEnvironment(
-        getSamplerConfiguration() != null, getIteratorSamplerConfigurationInternal()), false, null)) {
-
-      final Set<ByteSequence> colfs = new TreeSet<>();
-      for (Column c : this.getFetchedColumns()) {
-        colfs.add(new ArrayByteSequence(c.getColumnFamily()));
-      }
-
-      skvi.seek(range, colfs, true);
-      return new IteratorAdapter(skvi);
+    SortedKeyValueIterator<Key,Value> skvi;
+    try {
+      skvi = IteratorUtil.loadIterators(smi, tm.values(), serverSideIteratorOptions, new ClientSideIteratorEnvironment(getSamplerConfiguration() != null,
+          getIteratorSamplerConfigurationInternal()), false, null);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+
+    final Set<ByteSequence> colfs = new TreeSet<>();
+    for (Column c : this.getFetchedColumns()) {
+      colfs.add(new ArrayByteSequence(c.getColumnFamily()));
+    }
+
+    try {
+      skvi.seek(range, colfs, true);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    return new IteratorAdapter(skvi);
   }
 
   @Override
