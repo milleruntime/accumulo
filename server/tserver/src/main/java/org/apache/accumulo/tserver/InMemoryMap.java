@@ -19,6 +19,7 @@ package org.apache.accumulo.tserver;
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -621,8 +622,8 @@ public class InMemoryMap {
           iter = null;
           // ensure files are referenced even if iterator was never seeked before
           iterator();
-        } catch (Exception e) {
-          throw new RuntimeException(e);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
         }
       }
 

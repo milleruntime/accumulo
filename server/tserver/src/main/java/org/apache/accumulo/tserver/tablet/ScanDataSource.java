@@ -206,7 +206,7 @@ class ScanDataSource implements DataSource {
     }
   }
 
-  void close(boolean sawErrors) throws IOException {
+  void close(boolean sawErrors) {
 
     if (memIters != null) {
       tablet.getTabletMemory().returnIterators(memIters);
@@ -225,18 +225,15 @@ class ScanDataSource implements DataSource {
       fileManager = null;
     }
 
-    try {
-      if (statsIterator != null) {
-        statsIterator.report();
-        statsIterator.close();
-      }
-
-      if (iter != null) {
-        iter.close();
-      }
-    } catch (Exception e) {
-      throw new IOException(e);
+    if (statsIterator != null) {
+      statsIterator.report();
+      statsIterator.close();
     }
+
+    if (iter != null) {
+      iter.close();
+    }
+
   }
 
   public void interrupt() {

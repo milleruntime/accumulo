@@ -18,6 +18,7 @@ package org.apache.accumulo.core.iterators.system;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -108,7 +109,7 @@ public class SequenceFileIterator implements FileSKVIterator {
     try {
       reader.close();
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new UncheckedIOException(e);
     }
   }
 
