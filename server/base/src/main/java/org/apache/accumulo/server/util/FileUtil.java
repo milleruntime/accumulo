@@ -257,10 +257,7 @@ public class FileUtil {
       return (numLte + 1) / (double) (numKeys + 2);
 
     } finally {
-      if (mmfi != null) {
-        mmfi.close();
-      }
-      cleanupIndexOp(acuconf, tmpDir, fs, readers);
+      cleanupIndexOp(tmpDir, fs, readers, mmfi);
     }
   }
 
@@ -369,14 +366,11 @@ public class FileUtil {
 
       return ret;
     } finally {
-      if (mmfi != null) {
-        mmfi.close();
-      }
-      cleanupIndexOp(acuConf, tmpDir, fs, readers);
+      cleanupIndexOp(tmpDir, fs, readers, mmfi);
     }
   }
 
-  protected static void cleanupIndexOp(AccumuloConfiguration acuConf, Path tmpDir, VolumeManager fs, ArrayList<FileSKVIterator> readers) throws IOException {
+  protected static void cleanupIndexOp(Path tmpDir, VolumeManager fs, ArrayList<FileSKVIterator> readers, MultiIterator multiIter) throws IOException {
     // close all of the index sequence files
     for (FileSKVIterator r : readers) {
       try {
@@ -387,15 +381,21 @@ public class FileUtil {
         log.error("{}", e.getMessage(), e);
       }
     }
+    try {
+      if (multiIter != null) {
+        multiIter.close();
+      }
+    } catch (RuntimeException e) {
+      log.error("{}", e.getMessage(), e);
+    }
 
     if (tmpDir != null) {
       Volume v = fs.getVolumeByPath(tmpDir);
       if (v.getFileSystem().exists(tmpDir)) {
         fs.deleteRecursively(tmpDir);
-        return;
+      } else {
+        log.error("Did not delete tmp dir because it wasn't a tmp dir " + tmpDir);
       }
-
-      log.error("Did not delete tmp dir because it wasn't a tmp dir " + tmpDir);
     }
   }
 
