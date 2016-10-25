@@ -18,6 +18,7 @@ package org.apache.accumulo.core.iterators.system;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -33,6 +34,7 @@ import org.apache.accumulo.core.iterators.SortedKeyValueIterator;
 import org.apache.accumulo.core.iterators.SortedMapIterator;
 import org.apache.accumulo.core.iterators.system.SourceSwitchingIterator.DataSource;
 import org.apache.hadoop.io.Text;
+import org.junit.Assert;
 
 public class SourceSwitchingIteratorTest extends TestCase {
 
@@ -271,5 +273,62 @@ public class SourceSwitchingIteratorTest extends TestCase {
       fail("expected to see IterationInterruptedException");
     } catch (IterationInterruptedException iie) {}
 
+  }
+
+  private static class CloseTestIter extends SortedMapIterator {
+
+    int closeCallCount = 0;
+
+    public CloseTestIter(SortedMap<Key,Value> map) {
+      super(map);
+    }
+
+    @Override
+    public void close() {
+      closeCallCount++;
+    }
+  }
+
+  public void testCloseRow() throws Exception {
+    TreeMap<Key,Value> tm1 = new TreeMap<>();
+    put(tm1, "r1", "cf1", "cq1", 5, "v1");
+    put(tm1, "r1", "cf1", "cq2", 5, "v2");
+    put(tm1, "r2", "cf1", "cq1", 5, "v3");
+    put(tm1, "r2", "cf1", "cq2", 5, "v4");
+
+    TreeMap<Key,Value> tm2 = new TreeMap<>();
+    put(tm2, "r1", "cf1", "cq1", 5, "v1");
+    put(tm2, "r1", "cf1", "cq2", 5, "v2");
+    put(tm2, "r2", "cf1", "cq1", 7, "v5");
+    put(tm2, "r2", "cf1", "cq2", 7, "v6");
+
+    for (boolean switchOnRow : new boolean[] {false, true}) {
+
+      System.out.println(switchOnRow);
+
+      CloseTestIter iter1 = new CloseTestIter(tm1);
+      TestDataSource tds = new TestDataSource(iter1);
+
+      SourceSwitchingIterator ssi = new SourceSwitchingIterator(tds, switchOnRow);
+
+      ssi.seek(new Range(), new ArrayList<ByteSequence>(), false);
+
+      CloseTestIter iter2 = new CloseTestIter(tm2);
+      tds.setNext(new TestDataSource(iter2));
+
+      Assert.assertEquals(0, iter1.closeCallCount);
+
+      ane(ssi, "r1", "cf1", "cq1", 5, "v1", true);
+      ane(ssi, "r1", "cf1", "cq2", 5, "v2", true);
+      ane(ssi, "r2", "cf1", "cq1", 7, "v5", true);
+      ane(ssi, "r2", "cf1", "cq2", 7, "v6", true);
+
+      Assert.assertEquals(1, iter1.closeCallCount);
+      Assert.assertEquals(0, iter2.closeCallCount);
+
+      ssi.close();
+
+      Assert.assertEquals(1, iter2.closeCallCount);
+    }
   }
 }
