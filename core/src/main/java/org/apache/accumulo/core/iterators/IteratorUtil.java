@@ -395,7 +395,7 @@ public class IteratorUtil {
       byte[] defaultVisibility) throws IOException {
     DeletingIterator delIter = new DeletingIterator(source, false);
     ColumnFamilySkippingIterator cfsi = new ColumnFamilySkippingIterator(delIter);
-    ColumnQualifierFilter colFilter = new ColumnQualifierFilter(cfsi, cols);
+    SortedKeyValueIterator<Key,Value> colFilter = ColumnQualifierFilter.wrap(cfsi, cols);
     return new VisibilityFilter(colFilter, auths, defaultVisibility);
   }
 }
