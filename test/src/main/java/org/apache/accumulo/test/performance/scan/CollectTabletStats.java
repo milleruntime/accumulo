@@ -432,7 +432,7 @@ public class CollectTabletStats {
     DeletingIterator delIter = new DeletingIterator(multiIter, false);
     ColumnFamilySkippingIterator cfsi = new ColumnFamilySkippingIterator(delIter);
     SortedKeyValueIterator<Key,Value> colFilter = ColumnQualifierFilter.wrap(cfsi, columnSet);
-    VisibilityFilter visFilter = new VisibilityFilter(colFilter, authorizations, defaultLabels);
+    SortedKeyValueIterator<Key,Value> visFilter = VisibilityFilter.wrap(colFilter, authorizations, defaultLabels);
 
     if (useTableIterators)
       return IteratorUtil.loadIterators(IteratorScope.scan, visFilter, ke, conf, ssiList, ssio, null);

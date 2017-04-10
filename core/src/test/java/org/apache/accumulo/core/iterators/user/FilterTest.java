@@ -394,7 +394,7 @@ public class FilterTest {
     }
     assertEquals(1000, tm.size());
 
-    VisibilityFilter a = new VisibilityFilter(new SortedMapIterator(tm), auths, le2.getExpression());
+    SortedKeyValueIterator<Key,Value> a = VisibilityFilter.wrap(new SortedMapIterator(tm), auths, le2.getExpression());
     a.seek(new Range(), EMPTY_COL_FAMS, false);
     int size = size(a);
     assertEquals(750, size);

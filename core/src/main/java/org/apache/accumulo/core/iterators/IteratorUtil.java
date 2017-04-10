@@ -396,6 +396,6 @@ public class IteratorUtil {
     DeletingIterator delIter = new DeletingIterator(source, false);
     ColumnFamilySkippingIterator cfsi = new ColumnFamilySkippingIterator(delIter);
     SortedKeyValueIterator<Key,Value> colFilter = ColumnQualifierFilter.wrap(cfsi, cols);
-    return new VisibilityFilter(colFilter, auths, defaultVisibility);
+    return VisibilityFilter.wrap(colFilter, auths, defaultVisibility);
   }
 }
