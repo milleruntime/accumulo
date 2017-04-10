@@ -40,7 +40,7 @@ public class VisibilityFilter extends SynchronizedServerFilter {
 
   private static final Logger log = LoggerFactory.getLogger(VisibilityFilter.class);
 
-  public VisibilityFilter(SortedKeyValueIterator<Key,Value> iterator, Authorizations authorizations, byte[] defaultVisibility) {
+  private VisibilityFilter(SortedKeyValueIterator<Key,Value> iterator, Authorizations authorizations, byte[] defaultVisibility) {
     super(iterator);
     this.ve = new VisibilityEvaluator(authorizations);
     this.authorizations = authorizations;
@@ -76,6 +76,31 @@ public class VisibilityFilter extends SynchronizedServerFilter {
     } catch (BadArgumentException e) {
       log.error("Parse Error", e);
       return false;
+    }
+  }
+
+  private static class EmptyAuthsVisibilityFilter extends SynchronizedServerFilter {
+
+    public EmptyAuthsVisibilityFilter(SortedKeyValueIterator<Key,Value> source) {
+      super(source);
+    }
+
+    @Override
+    public synchronized SortedKeyValueIterator<Key,Value> deepCopy(IteratorEnvironment env) {
+      return new EmptyAuthsVisibilityFilter(source.deepCopy(env));
+    }
+
+    @Override
+    protected boolean accept(Key k, Value v) {
+      return k.getColumnVisibilityData().length() == 0;
+    }
+  }
+
+  public static SortedKeyValueIterator<Key,Value> wrap(SortedKeyValueIterator<Key,Value> source, Authorizations authorizations, byte[] defaultVisibility) {
+    if (authorizations.isEmpty() && defaultVisibility.length == 0) {
+      return new EmptyAuthsVisibilityFilter(source);
+    } else {
+      return new VisibilityFilter(source, authorizations, defaultVisibility);
     }
   }
 }
