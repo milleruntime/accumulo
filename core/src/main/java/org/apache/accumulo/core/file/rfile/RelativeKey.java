@@ -171,9 +171,18 @@ public class RelativeKey implements Writable {
       fieldsPrefixed = 0;
     }
 
-    byte[] row, cf, cq, cv;
-    long ts;
+    byte[] row = readRow(in);
+    byte[] cf = readColumnFamily(in);
+    byte[] cq = readColumnQualifier(in);
+    byte[] cv = readColumnVisibility(in);
+    long ts = readTimestamp(in);
 
+    this.key = new Key(row, cf, cq, cv, ts, (fieldsSame & DELETED) == DELETED, false);
+    this.prevKey = this.key;
+  }
+
+  private byte[] readRow(DataInput in) throws IOException {
+    byte[] row;
     if ((fieldsSame & ROW_SAME) == ROW_SAME) {
       row = prevKey.getRowData().toArray();
     } else if ((fieldsPrefixed & ROW_COMMON_PREFIX) == ROW_COMMON_PREFIX) {
@@ -181,7 +190,11 @@ public class RelativeKey implements Writable {
     } else {
       row = read(in);
     }
+    return row;
+  }
 
+  private byte[] readColumnFamily(DataInput in) throws IOException {
+    byte[] cf;
     if ((fieldsSame & CF_SAME) == CF_SAME) {
       cf = prevKey.getColumnFamilyData().toArray();
     } else if ((fieldsPrefixed & CF_COMMON_PREFIX) == CF_COMMON_PREFIX) {
@@ -189,7 +202,11 @@ public class RelativeKey implements Writable {
     } else {
       cf = read(in);
     }
+    return cf;
+  }
 
+  private byte[] readColumnQualifier(DataInput in) throws IOException {
+    byte[] cq;
     if ((fieldsSame & CQ_SAME) == CQ_SAME) {
       cq = prevKey.getColumnQualifierData().toArray();
     } else if ((fieldsPrefixed & CQ_COMMON_PREFIX) == CQ_COMMON_PREFIX) {
@@ -197,7 +214,11 @@ public class RelativeKey implements Writable {
     } else {
       cq = read(in);
     }
+    return cq;
+  }
 
+  private byte[] readColumnVisibility(DataInput in) throws IOException {
+    byte[] cv;
     if ((fieldsSame & CV_SAME) == CV_SAME) {
       cv = prevKey.getColumnVisibilityData().toArray();
     } else if ((fieldsPrefixed & CV_COMMON_PREFIX) == CV_COMMON_PREFIX) {
@@ -205,7 +226,11 @@ public class RelativeKey implements Writable {
     } else {
       cv = read(in);
     }
+    return cv;
+  }
 
+  private long readTimestamp(DataInput in) throws IOException {
+    long ts;
     if ((fieldsSame & TS_SAME) == TS_SAME) {
       ts = prevKey.getTimestamp();
     } else if ((fieldsPrefixed & TS_DIFF) == TS_DIFF) {
@@ -213,9 +238,7 @@ public class RelativeKey implements Writable {
     } else {
       ts = WritableUtils.readVLong(in);
     }
-
-    this.key = new Key(row, cf, cq, cv, ts, (fieldsSame & DELETED) == DELETED, false);
-    this.prevKey = this.key;
+    return ts;
   }
 
   public static class SkippR {
