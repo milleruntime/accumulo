@@ -75,6 +75,9 @@ import com.google.common.net.HostAndPort;
 
 public class ThriftScanner {
   private static final Logger log = LoggerFactory.getLogger(ThriftScanner.class);
+  private static String lastError = null;
+  private static long sleepMillis = 100;
+  private static int tooManyFilesCount = 0;
 
   public static final Map<TabletType,Set<String>> serversWaitedForWrites = new EnumMap<>(TabletType.class);
 
@@ -168,6 +171,7 @@ public class ThriftScanner {
         List<IterInfo> serverSideIteratorList, Map<String,Map<String,String>> serverSideIteratorOptions, boolean isolated, long readaheadThreshold,
         SamplerConfiguration samplerConfig, long batchTimeOut, String classLoaderContext) {
       this.context = context;
+
       this.authorizations = authorizations;
       this.classLoaderContext = classLoaderContext;
 
@@ -216,167 +220,35 @@ public class ThriftScanner {
   public static List<KeyValue> scan(ClientContext context, ScanState scanState, int timeOut) throws ScanTimedOutException, AccumuloException,
       AccumuloSecurityException, TableNotFoundException {
     TabletLocation loc = null;
+    TabletLocator locator = null;
     Instance instance = context.getInstance();
-    long startTime = System.currentTimeMillis();
-    String lastError = null;
+    long startTime = System.nanoTime();
     String error = null;
-    int tooManyFilesCount = 0;
-    long sleepMillis = 100;
-    final long maxSleepTime = context.getConfiguration().getTimeInMillis(Property.GENERAL_MAX_SCANNER_RETRY_PERIOD);
+    final long MAX_SLEEP_TIME = context.getConfiguration().getTimeInMillis(Property.GENERAL_MAX_SCANNER_RETRY_PERIOD);
 
     List<KeyValue> results = null;
 
     Span span = Trace.start("scan");
     try {
+      locator = TabletLocator.getLocator(context, scanState.tableId);
       while (results == null && !scanState.finished) {
         if (Thread.currentThread().isInterrupted()) {
           throw new AccumuloException("Thread interrupted");
         }
 
-        if ((System.currentTimeMillis() - startTime) / 1000.0 > timeOut)
+        if ((System.nanoTime() - startTime) / 1000.0 > timeOut)
           throw new ScanTimedOutException();
 
         while (loc == null) {
-          long currentTime = System.currentTimeMillis();
-          if ((currentTime - startTime) / 1000.0 > timeOut)
-            throw new ScanTimedOutException();
-
-          Span locateSpan = Trace.start("scan:locateTablet");
-          try {
-            loc = TabletLocator.getLocator(context, scanState.tableId).locateTablet(context, scanState.startRow, scanState.skipStartRow, false);
-
-            if (loc == null) {
-              if (!Tables.exists(instance, scanState.tableId))
-                throw new TableDeletedException(scanState.tableId.canonicalID());
-              else if (Tables.getTableState(instance, scanState.tableId) == TableState.OFFLINE)
-                throw new TableOfflineException(instance, scanState.tableId.canonicalID());
-
-              error = "Failed to locate tablet for table : " + scanState.tableId + " row : " + scanState.startRow;
-              if (!error.equals(lastError))
-                log.debug("{}", error);
-              else if (log.isTraceEnabled())
-                log.trace("{}", error);
-              lastError = error;
-              sleepMillis = pause(sleepMillis, maxSleepTime);
-            } else {
-              // when a tablet splits we do want to continue scanning the low child
-              // of the split if we are already passed it
-              Range dataRange = loc.tablet_extent.toDataRange();
-
-              if (scanState.range.getStartKey() != null && dataRange.afterEndKey(scanState.range.getStartKey())) {
-                // go to the next tablet
-                scanState.startRow = loc.tablet_extent.getEndRow();
-                scanState.skipStartRow = true;
-                loc = null;
-              } else if (scanState.range.getEndKey() != null && dataRange.beforeStartKey(scanState.range.getEndKey())) {
-                // should not happen
-                throw new RuntimeException("Unexpected tablet, extent : " + loc.tablet_extent + "  range : " + scanState.range + " startRow : "
-                    + scanState.startRow);
-              }
-            }
-          } catch (AccumuloServerException e) {
-            log.debug("Scan failed, server side exception : {}", e.getMessage());
-            throw e;
-          } catch (AccumuloException e) {
-            error = "exception from tablet loc " + e.getMessage();
-            if (!error.equals(lastError))
-              log.debug("{}", error);
-            else if (log.isTraceEnabled())
-              log.trace("{}", error);
-
-            lastError = error;
-            sleepMillis = pause(sleepMillis, maxSleepTime);
-          } finally {
-            locateSpan.stop();
-          }
+          loc = getTabletLocation(locator, context, instance, scanState, timeOut, startTime, MAX_SLEEP_TIME);
         }
 
         Span scanLocation = Trace.start("scan:location");
         scanLocation.data("tserver", loc.tablet_location);
         try {
-          results = scan(loc, scanState, context);
-        } catch (AccumuloSecurityException e) {
-          Tables.clearCache(instance);
-          if (!Tables.exists(instance, scanState.tableId))
-            throw new TableDeletedException(scanState.tableId.canonicalID());
-          e.setTableInfo(Tables.getPrintableTableInfoFromId(instance, scanState.tableId));
-          throw e;
-        } catch (TApplicationException tae) {
-          throw new AccumuloServerException(loc.tablet_location, tae);
-        } catch (TSampleNotPresentException tsnpe) {
-          String message = "Table " + Tables.getPrintableTableInfoFromId(instance, scanState.tableId) + " does not have sampling configured or built";
-          throw new SampleNotPresentException(message, tsnpe);
-        } catch (NotServingTabletException e) {
-          error = "Scan failed, not serving tablet " + loc;
-          if (!error.equals(lastError))
-            log.debug("{}", error);
-          else if (log.isTraceEnabled())
-            log.trace("{}", error);
-          lastError = error;
-
-          TabletLocator.getLocator(context, scanState.tableId).invalidateCache(loc.tablet_extent);
-          loc = null;
-
-          // no need to try the current scan id somewhere else
-          scanState.scanID = null;
-
-          if (scanState.isolated)
-            throw new IsolationException();
-
-          sleepMillis = pause(sleepMillis, maxSleepTime);
-        } catch (NoSuchScanIDException e) {
-          error = "Scan failed, no such scan id " + scanState.scanID + " " + loc;
-          if (!error.equals(lastError))
-            log.debug("{}", error);
-          else if (log.isTraceEnabled())
-            log.trace("{}", error);
-          lastError = error;
-
-          if (scanState.isolated)
-            throw new IsolationException();
-
-          scanState.scanID = null;
-        } catch (TooManyFilesException e) {
-          error = "Tablet has too many files " + loc + " retrying...";
-          if (!error.equals(lastError)) {
-            log.debug("{}", error);
-            tooManyFilesCount = 0;
-          } else {
-            tooManyFilesCount++;
-            if (tooManyFilesCount == 300)
-              log.warn("{}", error);
-            else if (log.isTraceEnabled())
-              log.trace("{}", error);
-          }
-          lastError = error;
-
-          // not sure what state the scan session on the server side is
-          // in after this occurs, so lets be cautious and start a new
-          // scan session
-          scanState.scanID = null;
-
-          if (scanState.isolated)
-            throw new IsolationException();
-
-          sleepMillis = pause(sleepMillis, maxSleepTime);
-        } catch (TException e) {
-          TabletLocator.getLocator(context, scanState.tableId).invalidateCache(context.getInstance(), loc.tablet_location);
-          error = "Scan failed, thrift error " + e.getClass().getName() + "  " + e.getMessage() + " " + loc;
-          if (!error.equals(lastError))
-            log.debug("{}", error);
-          else if (log.isTraceEnabled())
-            log.trace("{}", error);
-          lastError = error;
-          loc = null;
-
-          // do not want to continue using the same scan id, if a timeout occurred could cause a batch to be skipped
-          // because a thread on the server side may still be processing the timed out continue scan
-          scanState.scanID = null;
-
-          if (scanState.isolated)
-            throw new IsolationException();
-
-          sleepMillis = pause(sleepMillis, maxSleepTime);
+          results = _scan(loc, scanState, context);
+        } catch (Exception ex) {
+          handleException(ex, instance, locator, scanState, loc, MAX_SLEEP_TIME);
         } finally {
           scanLocation.stop();
         }
@@ -394,7 +266,144 @@ public class ThriftScanner {
     }
   }
 
-  private static List<KeyValue> scan(TabletLocation loc, ScanState scanState, ClientContext context) throws AccumuloSecurityException,
+  private static TabletLocation getTabletLocation(TabletLocator locator, ClientContext context, Instance instance, ScanState scanState, int timeOut, long startTime, long maxSleepTime)
+          throws ScanTimedOutException, AccumuloSecurityException, AccumuloServerException, TableNotFoundException, InterruptedException{
+    TabletLocation loc = null;
+    String error;
+    long currentTime = System.nanoTime();
+    if ((currentTime - startTime) / 1000.0 > timeOut)
+      throw new ScanTimedOutException();
+
+    Span locateSpan = Trace.start("scan:locateTablet");
+    try {
+      loc = locator.locateTablet(context, scanState.startRow, scanState.skipStartRow, false);
+
+      if (loc == null) {
+        if (!Tables.exists(instance, scanState.tableId))
+          throw new TableDeletedException(scanState.tableId.canonicalID());
+        else if (Tables.getTableState(instance, scanState.tableId) == TableState.OFFLINE)
+          throw new TableOfflineException(instance, scanState.tableId.canonicalID());
+
+        error = "Failed to locate tablet for table : " + scanState.tableId + " row : " + scanState.startRow;
+        handleErrorAndSleep(error, maxSleepTime);
+      } else {
+        // when a tablet splits we do want to continue scanning the low child
+        // of the split if we are already passed it
+        Range dataRange = loc.tablet_extent.toDataRange();
+
+        if (scanState.range.getStartKey() != null && dataRange.afterEndKey(scanState.range.getStartKey())) {
+          // go to the next tablet
+          scanState.startRow = loc.tablet_extent.getEndRow();
+          scanState.skipStartRow = true;
+          loc = null;
+        } else if (scanState.range.getEndKey() != null && dataRange.beforeStartKey(scanState.range.getEndKey())) {
+          // should not happen
+          throw new RuntimeException("Unexpected tablet, extent : " + loc.tablet_extent + "  range : " + scanState.range + " startRow : "
+                  + scanState.startRow);
+        }
+      }
+    } catch (AccumuloServerException e) {
+      log.debug("Scan failed, server side exception : {}", e.getMessage());
+      throw e;
+    } catch (AccumuloException e) {
+      error = "exception from tablet loc " + e.getMessage();
+      handleErrorAndSleep(error, maxSleepTime);
+    } finally {
+      locateSpan.stop();
+    }
+    return loc;
+  }
+
+  private static void handleException(Exception ex, Instance instance, TabletLocator locator, ScanState scanState, TabletLocation loc, long maxSleepTime)
+          throws AccumuloSecurityException, AccumuloException, InterruptedException {
+    String error;
+    try {
+      throw ex;
+    }
+    catch (AccumuloSecurityException e) {
+      Tables.clearCache(instance);
+      if (!Tables.exists(instance, scanState.tableId))
+        throw new TableDeletedException(scanState.tableId.canonicalID());
+      e.setTableInfo(Tables.getPrintableTableInfoFromId(instance, scanState.tableId));
+      throw e;
+    } catch (TApplicationException tae) {
+      throw new AccumuloServerException(loc.tablet_location, tae);
+    } catch (TSampleNotPresentException tsnpe) {
+      String message = "Table " + Tables.getPrintableTableInfoFromId(instance, scanState.tableId) + " does not have sampling configured or built";
+      throw new SampleNotPresentException(message, tsnpe);
+    } catch (NotServingTabletException e) {
+      error = "Scan failed, not serving tablet " + loc;
+      locator.invalidateCache(loc.tablet_extent);
+      loc = null;
+
+      // no need to try the current scan id somewhere else
+      scanState.scanID = null;
+
+      if (scanState.isolated)
+        throw new IsolationException();
+
+      handleErrorAndSleep(error, maxSleepTime);
+    } catch (NoSuchScanIDException e) {
+      handleError("Scan failed, no such scan id " + scanState.scanID + " " + loc);
+
+      if (scanState.isolated)
+        throw new IsolationException();
+
+      scanState.scanID = null;
+    } catch (TooManyFilesException e) {
+      error = "Tablet has too many files " + loc + " retrying...";
+      if (!error.equals(lastError)) {
+        log.debug("{}", error);
+        tooManyFilesCount = 0;
+      } else {
+        tooManyFilesCount++;
+        if (tooManyFilesCount == 300)
+          log.warn("{}", error);
+        else if (log.isTraceEnabled())
+          log.trace("{}", error);
+      }
+      lastError = error;
+
+      // not sure what state the scan session on the server side is
+      // in after this occurs, so lets be cautious and start a new
+      // scan session
+      scanState.scanID = null;
+
+      if (scanState.isolated)
+        throw new IsolationException();
+
+      sleepMillis = pause(sleepMillis, maxSleepTime);
+    } catch (TException e) {
+      locator.invalidateCache(instance, loc.tablet_location);
+      error = "Scan failed, thrift error " + e.getClass().getName() + "  " + e.getMessage() + " " + loc;
+      loc = null;
+
+      // do not want to continue using the same scan id, if a timeout occurred could cause a batch to be skipped
+      // because a thread on the server side may still be processing the timed out continue scan
+      scanState.scanID = null;
+
+      if (scanState.isolated)
+        throw new IsolationException();
+
+      handleErrorAndSleep(error, maxSleepTime);
+    } catch (Exception e) {
+      throw new AccumuloException(e);
+    }
+  }
+
+  private static void handleErrorAndSleep(String error, long maxSleepTime) throws InterruptedException{
+    handleError(error);
+    sleepMillis = pause(sleepMillis, maxSleepTime);
+  }
+  private static void handleError(String error) {
+    if (!error.equals(lastError))
+      log.debug("{}", error);
+    else if (log.isTraceEnabled())
+      log.trace("{}", error);
+    lastError = error;
+  }
+
+  private static List<KeyValue> _scan(TabletLocation loc, ScanState scanState, ClientContext context) throws AccumuloSecurityException,
       NotServingTabletException, TException, NoSuchScanIDException, TooManyFilesException, TSampleNotPresentException {
     if (scanState.finished)
       return null;
@@ -416,7 +425,7 @@ public class ThriftScanner {
 
       if (scanState.scanID == null) {
         String msg = "Starting scan tserver=" + loc.tablet_location + " tablet=" + loc.tablet_extent + " range=" + scanState.range + " ssil="
-            + scanState.serverSideIteratorList + " ssio=" + scanState.serverSideIteratorOptions + " context=" + scanState.classLoaderContext;
+            + scanState.serverSideIteratorList + " ssio=" + scanState.serverSideIteratorOptions;
         Thread.currentThread().setName(msg);
 
         if (log.isTraceEnabled()) {
