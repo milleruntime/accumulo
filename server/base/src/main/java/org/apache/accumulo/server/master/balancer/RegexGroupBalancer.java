@@ -22,6 +22,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.accumulo.core.client.impl.Table;
 import org.apache.accumulo.core.conf.ConfigurationTypeHelper;
 import org.apache.accumulo.core.conf.Property;
 import org.apache.accumulo.core.data.impl.KeyExtent;
@@ -48,9 +49,9 @@ public class RegexGroupBalancer extends GroupBalancer {
   public static final String DEFAUT_GROUP_PROPERTY = Property.TABLE_ARBITRARY_PROP_PREFIX.getKey() + "balancer.group.regex.default";
   public static final String WAIT_TIME_PROPERTY = Property.TABLE_ARBITRARY_PROP_PREFIX.getKey() + "balancer.group.regex.wait.time";
 
-  private final String tableId;
+  private final Table.ID tableId;
 
-  public RegexGroupBalancer(String tableId) {
+  public RegexGroupBalancer(Table.ID tableId) {
     super(tableId);
     this.tableId = tableId;
   }

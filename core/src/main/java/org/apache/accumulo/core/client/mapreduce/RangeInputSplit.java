@@ -33,6 +33,7 @@ import org.apache.accumulo.core.client.ClientConfiguration;
 import org.apache.accumulo.core.client.Instance;
 import org.apache.accumulo.core.client.IteratorSetting;
 import org.apache.accumulo.core.client.ZooKeeperInstance;
+import org.apache.accumulo.core.client.impl.Table;
 import org.apache.accumulo.core.client.mapreduce.impl.SplitUtils;
 import org.apache.accumulo.core.client.mapreduce.lib.impl.ConfiguratorBase.TokenSource;
 import org.apache.accumulo.core.client.sample.SamplerConfiguration;
@@ -58,7 +59,8 @@ import org.apache.log4j.Level;
 public class RangeInputSplit extends InputSplit implements Writable {
   private Range range;
   private String[] locations;
-  private String tableId, tableName, instanceName, zooKeepers, principal;
+  private Table.ID tableId;
+  private String tableName, instanceName, zooKeepers, principal;
   private TokenSource tokenSource;
   private String tokenFile;
   private AuthenticationToken token;
@@ -73,7 +75,7 @@ public class RangeInputSplit extends InputSplit implements Writable {
     range = new Range();
     locations = new String[0];
     tableName = "";
-    tableId = "";
+    tableId = Table.ID.empty();
   }
 
   public RangeInputSplit(RangeInputSplit split) throws IOException {
@@ -83,11 +85,11 @@ public class RangeInputSplit extends InputSplit implements Writable {
     this.setTableId(split.getTableId());
   }
 
-  protected RangeInputSplit(String table, String tableId, Range range, String[] locations) {
+  protected RangeInputSplit(String tableName, String tableId, Range range, String[] locations) {
     this.range = range;
     setLocations(locations);
-    this.tableName = table;
-    this.tableId = tableId;
+    this.tableName = tableName;
+    this.tableId = new Table.ID(tableId);
   }
 
   public Range getRange() {
@@ -136,7 +138,7 @@ public class RangeInputSplit extends InputSplit implements Writable {
   public void readFields(DataInput in) throws IOException {
     range.readFields(in);
     tableName = in.readUTF();
-    tableId = in.readUTF();
+    tableId = new Table.ID(in.readUTF());
     int numLocs = in.readInt();
     locations = new String[numLocs];
     for (int i = 0; i < numLocs; ++i)
@@ -227,7 +229,7 @@ public class RangeInputSplit extends InputSplit implements Writable {
   public void write(DataOutput out) throws IOException {
     range.write(out);
     out.writeUTF(tableName);
-    out.writeUTF(tableId);
+    out.writeUTF(tableId.canonicalID());
     out.writeInt(locations.length);
     for (int i = 0; i < locations.length; ++i)
       out.writeUTF(locations[i]);
@@ -343,11 +345,11 @@ public class RangeInputSplit extends InputSplit implements Writable {
   }
 
   public void setTableId(String tableId) {
-    this.tableId = tableId;
+    this.tableId = new Table.ID(tableId);
   }
 
   public String getTableId() {
-    return tableId;
+    return tableId.canonicalID();
   }
 
   /**
