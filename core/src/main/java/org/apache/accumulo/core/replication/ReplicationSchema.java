@@ -99,7 +99,7 @@ public class ReplicationSchema {
      */
     public static Table.ID getTableId(Key k) {
       requireNonNull(k);
-      return new Table.ID(k.getColumnQualifier());
+      return new Table.ID(k.getColumnQualifier().toString());
     }
 
     /**

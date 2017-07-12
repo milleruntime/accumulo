@@ -81,6 +81,8 @@ public class KeyExtent implements WritableComparable<KeyExtent> {
   private Text textEndRow;
   private Text textPrevEndRow;
 
+  private final Table.ID EMPTY_ID = new Table.ID("");
+
   private void check() {
 
     if (getTableId() == null)
@@ -99,7 +101,7 @@ public class KeyExtent implements WritableComparable<KeyExtent> {
    *
    */
   public KeyExtent() {
-    this.setTableId(Table.ID.empty());
+    this.setTableId(EMPTY_ID);
     this.setEndRow(new Text(), false, false);
     this.setPrevEndRow(new Text(), false, false);
   }
@@ -250,7 +252,7 @@ public class KeyExtent implements WritableComparable<KeyExtent> {
   public void readFields(DataInput in) throws IOException {
     Text tid = new Text();
     tid.readFields(in);
-    setTableId(new Table.ID(tid));
+    setTableId(new Table.ID(tid.toString()));
     boolean hasRow = in.readBoolean();
     if (hasRow) {
       Text er = new Text();

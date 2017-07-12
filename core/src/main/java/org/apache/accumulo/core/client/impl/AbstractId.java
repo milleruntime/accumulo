@@ -52,6 +52,8 @@ public abstract class AbstractId implements Comparable<AbstractId>, Serializable
    */
   @Override
   public boolean equals(final Object obj) {
+    if (this == obj)
+      return true;
     return obj != null && Objects.equals(getClass(), obj.getClass()) && Objects.equals(canonicalID(), ((AbstractId) obj).canonicalID());
   }
 
@@ -78,6 +80,7 @@ public abstract class AbstractId implements Comparable<AbstractId>, Serializable
     return canonical.getBytes(UTF_8);
   }
 
+  @Override
   public int compareTo(AbstractId id) {
     requireNonNull(id, "id cannot be null");
     return this.canonicalID().compareTo(id.canonicalID());

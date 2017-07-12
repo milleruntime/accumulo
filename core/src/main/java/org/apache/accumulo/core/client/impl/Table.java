@@ -17,7 +17,6 @@
 package org.apache.accumulo.core.client.impl;
 
 import org.apache.accumulo.core.client.Instance;
-import org.apache.hadoop.io.Text;
 
 public class Table {
 
@@ -32,16 +31,8 @@ public class Table {
     public static final ID REPLICATION = new ID("+rep");
     public static final ID ROOT = new ID("+r");
 
-    public static ID empty() {
-      return new ID("");
-    }
-
     public ID(final String canonical) {
       super(canonical);
-    }
-
-    public ID(Text textID) {
-      super(textID.toString());
     }
   }
 

@@ -783,7 +783,7 @@ public class TabletServer extends AccumuloServerContext implements Runnable {
         return;
       }
 
-      Table.ID tableId = Table.ID.empty();
+      Table.ID tableId = null;
       try {
         // if user has no permission to write to this table, add it to
         // the failures list

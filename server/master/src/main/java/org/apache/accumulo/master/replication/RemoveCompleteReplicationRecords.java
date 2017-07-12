@@ -174,7 +174,7 @@ public class RemoveCompleteReplicationRecords implements Runnable {
 
       Table.ID tableId;
       if (StatusSection.NAME.equals(colf)) {
-        tableId = new Table.ID(colq);
+        tableId = new Table.ID(colq.toString());
       } else if (WorkSection.NAME.equals(colf)) {
         ReplicationTarget target = ReplicationTarget.from(colq);
         tableId = target.getSourceTableId();

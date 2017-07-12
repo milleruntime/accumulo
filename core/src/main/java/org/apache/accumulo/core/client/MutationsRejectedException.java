@@ -70,7 +70,7 @@ public class MutationsRejectedException extends AccumuloException {
 
     for (Entry<TabletId,Set<SecurityErrorCode>> entry : hashMap.entrySet()) {
       TabletId tabletId = entry.getKey();
-      String tableInfo = Tables.getPrintableTableInfoFromId(instance, new Table.ID(tabletId.getTableId()));
+      String tableInfo = Tables.getPrintableTableInfoFromId(instance, new Table.ID(tabletId.getTableId().toString()));
 
       if (!result.containsKey(tableInfo)) {
         result.put(tableInfo, new HashSet<SecurityErrorCode>());

@@ -656,7 +656,7 @@ public abstract class AbstractInputFormat<K,V> implements InputFormat<K,V> {
       Table.ID tableId;
       // resolve table name to id once, and use id from this point forward
       if (DeprecationUtil.isMockInstance(instance)) {
-        tableId = Table.ID.empty();
+        tableId = null;
       } else {
         try {
           tableId = Tables.getTableId(instance, tableName);
@@ -705,10 +705,11 @@ public abstract class AbstractInputFormat<K,V> implements InputFormat<K,V> {
               getClientConfiguration(job));
           while (!tl.binRanges(context, ranges, binnedRanges).isEmpty()) {
             if (!DeprecationUtil.isMockInstance(instance)) {
+              String tableIdStr = tableId != null ? tableId.canonicalID() : null;
               if (!Tables.exists(instance, tableId))
-                throw new TableDeletedException(tableId.canonicalID());
+                throw new TableDeletedException(tableIdStr);
               if (Tables.getTableState(instance, tableId) == TableState.OFFLINE)
-                throw new TableOfflineException(instance, tableId.canonicalID());
+                throw new TableOfflineException(instance, tableIdStr);
             }
             binnedRanges.clear();
             log.warn("Unable to locate bins for specified ranges. Retrying.");

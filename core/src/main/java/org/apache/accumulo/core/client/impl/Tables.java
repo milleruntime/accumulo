@@ -142,6 +142,8 @@ public class Tables {
   }
 
   public static boolean exists(Instance instance, Table.ID tableId) {
+    if (tableId == null)
+      return false;
     ZooCache zc = getZooCache(instance);
     List<String> tableIds = zc.getChildren(ZooUtil.getRoot(instance) + Constants.ZTABLES);
     return tableIds.contains(tableId.canonicalID());
@@ -173,15 +175,6 @@ public class Tables {
 
     getZooCache(instance).clear(ZooUtil.getRoot(instance) + thePath);
 
-  }
-
-  /**
-   * @deprecated TODO remove once new Monitor gets merged, only used by old servlets
-   */
-  @Deprecated
-  public static String getPrintableTableNameFromId(Map<String,String> tidToNameMap, String tableId) {
-    String tableName = tidToNameMap.get(tableId);
-    return tableName == null ? "(ID:" + tableId + ")" : tableName;
   }
 
   public static String getPrintableTableInfoFromId(Instance instance, Table.ID tableId) {
