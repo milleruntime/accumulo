@@ -164,7 +164,7 @@ public class TableOperationsImpl extends TableOperationsHelper {
       timer = new OpTimer().start();
     }
 
-    TreeSet<String> tableNames = new TreeSet<>(Tables.getNameMap(context.getInstance()).keySet());
+    TreeSet<String> tableNames = new TreeSet<>(Tables.getNameToIdMap(context.getInstance()).keySet());
 
     if (timer != null) {
       timer.stop();
@@ -188,7 +188,7 @@ public class TableOperationsImpl extends TableOperationsHelper {
       timer = new OpTimer().start();
     }
 
-    boolean exists = Tables.getNameMap(context.getInstance()).containsKey(tableName);
+    boolean exists = Tables.getNameToIdMap(context.getInstance()).containsKey(tableName);
 
     if (timer != null) {
       timer.stop();
@@ -1327,7 +1327,10 @@ public class TableOperationsImpl extends TableOperationsHelper {
 
   @Override
   public Map<String,String> tableIdMap() {
-    return Tables.getNameToIdMap(context.getInstance());
+    return Tables.getNameToIdMap(context.getInstance()).entrySet().stream()
+        .collect(Collectors.toMap(Entry::getKey, e -> e.getValue().canonicalID(), (v1, v2) -> {
+          throw new RuntimeException(String.format("Duplicate key for values %s and %s", v1, v2));
+        }, TreeMap::new));
   }
 
   @Override

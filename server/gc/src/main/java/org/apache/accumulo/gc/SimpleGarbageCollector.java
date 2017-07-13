@@ -293,7 +293,7 @@ public class SimpleGarbageCollector extends AccumuloServerContext implements Ifa
 
     @Override
     public Set<Table.ID> getTableIDs() {
-      return Tables.getIdMap(getInstance()).keySet();
+      return Tables.getIdToNameMap(getInstance()).keySet();
     }
 
     @Override

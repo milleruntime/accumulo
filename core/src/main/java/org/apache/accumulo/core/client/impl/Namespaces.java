@@ -87,62 +87,16 @@ public class Namespaces {
     return new ZooCacheFactory().getZooCache(instance.getZooKeepers(), instance.getZooKeepersSessionTimeOut());
   }
 
-  private static SortedMap<String,String> getMap(Instance instance, boolean nameAsKey) {
-    ZooCache zc = getZooCache(instance);
-
-    List<String> namespaceIds = zc.getChildren(ZooUtil.getRoot(instance) + Constants.ZNAMESPACES);
-
-    TreeMap<String,String> namespaceMap = new TreeMap<>();
-
-    for (String id : namespaceIds) {
-      byte[] path = zc.get(ZooUtil.getRoot(instance) + Constants.ZNAMESPACES + "/" + id + Constants.ZNAMESPACE_NAME);
-      if (path != null) {
-        if (nameAsKey)
-          namespaceMap.put(new String(path, UTF_8), id);
-        else
-          namespaceMap.put(id, new String(path, UTF_8));
-      }
-    }
-    return namespaceMap;
-  }
-
   public static boolean exists(Instance instance, Namespace.ID namespaceId) {
     ZooCache zc = getZooCache(instance);
     List<String> namespaceIds = zc.getChildren(ZooUtil.getRoot(instance) + Constants.ZNAMESPACES);
     return namespaceIds.contains(namespaceId.canonicalID());
   }
 
-  /**
-   * @deprecated Do not use - String for namespace ID is not type safe. Use {@link #getNamespaceName(Instance, Namespace.ID)}
-   */
-  @Deprecated
-  public static String getNamespaceName(Instance instance, String namespaceId) throws NamespaceNotFoundException {
-    String namespaceName = getIdToNameMap(instance).get(namespaceId);
-    if (namespaceName == null)
-      throw new NamespaceNotFoundException(namespaceId, null, "getNamespaceName() failed to find namespace");
-    return namespaceName;
-  }
-
-  /**
-   * @deprecated Do not use - Not type safe, ambiguous String-String map. Use {@link #getNameMap(Instance)}
-   */
-  @Deprecated
-  public static SortedMap<String,String> getNameToIdMap(Instance instance) {
-    return getMap(instance, true);
-  }
-
-  /**
-   * @deprecated Do not use - Not type safe, ambiguous String-String map. Use {@link #getIdMap(Instance)}
-   */
-  @Deprecated
-  public static SortedMap<String,String> getIdToNameMap(Instance instance) {
-    return getMap(instance, false);
-  }
-
   public static List<Table.ID> getTableIds(Instance instance, Namespace.ID namespaceId) throws NamespaceNotFoundException {
     String namespace = getNamespaceName(instance, namespaceId);
     List<Table.ID> tableIds = new LinkedList<>();
-    for (Entry<String,Table.ID> nameToId : Tables.getNameMap(instance).entrySet())
+    for (Entry<String,Table.ID> nameToId : Tables.getNameToIdMap(instance).entrySet())
       if (namespace.equals(Tables.qualify(nameToId.getKey()).getFirst()))
         tableIds.add(nameToId.getValue());
     return tableIds;
@@ -151,7 +105,7 @@ public class Namespaces {
   public static List<String> getTableNames(Instance instance, Namespace.ID namespaceId) throws NamespaceNotFoundException {
     String namespace = getNamespaceName(instance, namespaceId);
     List<String> names = new LinkedList<>();
-    for (String name : Tables.getNameMap(instance).keySet())
+    for (String name : Tables.getNameToIdMap(instance).keySet())
       if (namespace.equals(Tables.qualify(name).getFirst()))
         names.add(name);
     return names;
@@ -174,7 +128,7 @@ public class Namespaces {
   /**
    * Return sorted map with key = ID, value = namespaceName
    */
-  public static SortedMap<Namespace.ID,String> getIdMap(Instance instance) {
+  public static SortedMap<Namespace.ID,String> getIdToNameMap(Instance instance) {
     SortedMap<Namespace.ID,String> idMap = new TreeMap<>();
     populateMap(instance, (id, name) -> idMap.put(new Namespace.ID(id), name));
     return idMap;
@@ -183,7 +137,7 @@ public class Namespaces {
   /**
    * Return sorted map with key = namespaceName, value = ID
    */
-  public static SortedMap<String,Namespace.ID> getNameMap(Instance instance) {
+  public static SortedMap<String,Namespace.ID> getNameToIdMap(Instance instance) {
     SortedMap<String,Namespace.ID> nameMap = new TreeMap<>();
     populateMap(instance, (id, name) -> nameMap.put(name, new Namespace.ID(id)));
     return nameMap;

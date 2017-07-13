@@ -218,7 +218,7 @@ public class TabletStateChangeIteratorIT extends AccumuloClusterHarness {
 
     @Override
     public Set<Table.ID> onlineTables() {
-      Set<Table.ID> onlineTables = Tables.getIdMap(getConnector().getInstance()).keySet();
+      Set<Table.ID> onlineTables = Tables.getIdToNameMap(getConnector().getInstance()).keySet();
       return Sets.filter(onlineTables, tableId -> Tables.getTableState(getConnector().getInstance(), tableId) == TableState.ONLINE);
     }
 

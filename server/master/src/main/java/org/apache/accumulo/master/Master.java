@@ -888,7 +888,7 @@ public class Master extends AccumuloServerContext implements LiveTServerSet.List
      */
     private void cleanupOfflineMigrations() {
       TableManager manager = TableManager.getInstance();
-      for (Table.ID tableId : Tables.getIdMap(getInstance()).keySet()) {
+      for (Table.ID tableId : Tables.getIdToNameMap(getInstance()).keySet()) {
         TableState state = manager.getTableState(tableId);
         if (TableState.OFFLINE == state) {
           clearMigrations(tableId);
@@ -1552,7 +1552,7 @@ public class Master extends AccumuloServerContext implements LiveTServerSet.List
     }
     TableManager manager = TableManager.getInstance();
 
-    for (Table.ID tableId : Tables.getIdMap(getInstance()).keySet()) {
+    for (Table.ID tableId : Tables.getIdToNameMap(getInstance()).keySet()) {
       TableState state = manager.getTableState(tableId);
       if (state != null) {
         if (state == TableState.ONLINE)
@@ -1570,7 +1570,7 @@ public class Master extends AccumuloServerContext implements LiveTServerSet.List
   @Override
   public Collection<MergeInfo> merges() {
     List<MergeInfo> result = new ArrayList<>();
-    for (Table.ID tableId : Tables.getIdMap(getInstance()).keySet()) {
+    for (Table.ID tableId : Tables.getIdToNameMap(getInstance()).keySet()) {
       result.add(getMergeInfo(tableId));
     }
     return result;

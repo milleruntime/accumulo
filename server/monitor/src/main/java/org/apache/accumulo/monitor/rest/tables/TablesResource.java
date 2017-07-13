@@ -74,7 +74,7 @@ public class TablesResource {
    * @return Table list
    */
   private static TablesList generateTables(String namespace) {
-    SortedMap<String,Namespace.ID> namespaces = Namespaces.getNameMap(Monitor.getContext().getInstance());
+    SortedMap<String,Namespace.ID> namespaces = Namespaces.getNameToIdMap(Monitor.getContext().getInstance());
 
     TablesList tableNamespace = new TablesList();
 
@@ -109,7 +109,7 @@ public class TablesResource {
     List<TableInformation> tables = new ArrayList<>();
 
     // Add tables to the list
-    for (Entry<String,Table.ID> entry : Tables.getNameMap(HdfsZooInstance.getInstance()).entrySet()) {
+    for (Entry<String,Table.ID> entry : Tables.getNameToIdMap(HdfsZooInstance.getInstance()).entrySet()) {
       String tableName = entry.getKey();
       Table.ID tableId = entry.getValue();
       TableInfo tableInfo = tableStats.get(tableName);
@@ -175,7 +175,7 @@ public class TablesResource {
   @GET
   @Path("namespaces/{namespaces}")
   public TablesList getTableWithNamespace(@PathParam("namespaces") String namespaceList) {
-    SortedMap<String,Namespace.ID> namespaces = Namespaces.getNameMap(Monitor.getContext().getInstance());
+    SortedMap<String,Namespace.ID> namespaces = Namespaces.getNameToIdMap(Monitor.getContext().getInstance());
 
     TablesList tableNamespace = new TablesList();
     /*
@@ -270,6 +270,6 @@ public class TablesResource {
   @GET
   public Map<String,List<String>> getNamespaces() {
     Instance inst = Monitor.getContext().getInstance();
-    return Collections.singletonMap("namespaces", Namespaces.getNameMap(inst).keySet().stream().collect(Collectors.toList()));
+    return Collections.singletonMap("namespaces", Namespaces.getNameToIdMap(inst).keySet().stream().collect(Collectors.toList()));
   }
 }

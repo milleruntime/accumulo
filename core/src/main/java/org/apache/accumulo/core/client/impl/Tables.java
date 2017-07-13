@@ -52,47 +52,6 @@ public class Tables {
     return new ZooCacheFactory().getZooCache(instance.getZooKeepers(), instance.getZooKeepersSessionTimeOut());
   }
 
-  private static SortedMap<String,String> getMap(Instance instance, boolean nameAsKey) {
-    ZooCache zc = getZooCache(instance);
-
-    List<String> tableIds = zc.getChildren(ZooUtil.getRoot(instance) + Constants.ZTABLES);
-    TreeMap<String,String> tableMap = new TreeMap<>();
-    Map<String,String> namespaceIdToNameMap = new HashMap<>();
-
-    for (String tableId : tableIds) {
-      byte[] tableName = zc.get(ZooUtil.getRoot(instance) + Constants.ZTABLES + "/" + tableId + Constants.ZTABLE_NAME);
-      byte[] nId = zc.get(ZooUtil.getRoot(instance) + Constants.ZTABLES + "/" + tableId + Constants.ZTABLE_NAMESPACE);
-      String namespaceName = Namespaces.DEFAULT_NAMESPACE;
-      // create fully qualified table name
-      if (nId == null) {
-        namespaceName = null;
-      } else {
-        String namespaceId = new String(nId, UTF_8);
-        if (!namespaceId.equals(Namespaces.DEFAULT_NAMESPACE_ID.canonicalID())) {
-          try {
-            namespaceName = namespaceIdToNameMap.get(namespaceId);
-            if (namespaceName == null) {
-              namespaceName = Namespaces.getNamespaceName(instance, namespaceId);
-              namespaceIdToNameMap.put(namespaceId, namespaceName);
-            }
-          } catch (NamespaceNotFoundException e) {
-            log.error("Table (" + tableId + ") contains reference to namespace (" + namespaceId + ") that doesn't exist", e);
-            continue;
-          }
-        }
-      }
-      if (tableName != null && namespaceName != null) {
-        String tableNameStr = qualified(new String(tableName, UTF_8), namespaceName);
-        if (nameAsKey)
-          tableMap.put(tableNameStr, tableId);
-        else
-          tableMap.put(tableId, tableNameStr);
-      }
-    }
-
-    return tableMap;
-  }
-
   /**
    * Lookup table ID in ZK. Throw TableNotFoundException if not found. Also wraps NamespaceNotFoundException in TableNotFoundException if namespace is not
    * found.
@@ -116,29 +75,13 @@ public class Tables {
       tableId = lookupTableId(instance, tableName);
       if (tableId == null) {
         String namespace = qualify(tableName).getFirst();
-        if (Namespaces.getNameMap(instance).containsKey(namespace))
+        if (Namespaces.getNameToIdMap(instance).containsKey(namespace))
           throw new TableNotFoundException(null, tableName, null);
         else
           throw new NamespaceNotFoundException(null, namespace, null);
       }
     }
     return tableId;
-  }
-
-  /**
-   * @deprecated Do not use - Not type safe, ambiguous String-String map. Use {@link #getNameMap(Instance)}
-   */
-  @Deprecated
-  public static SortedMap<String,String> getNameToIdMap(Instance instance) {
-    return getMap(instance, true);
-  }
-
-  /**
-   * @deprecated TODO remove once new Monitor gets merged, only used by old servlets
-   */
-  @Deprecated
-  public static SortedMap<String,String> getIdToNameMap(Instance instance) {
-    return getMap(instance, false);
   }
 
   public static boolean exists(Instance instance, Table.ID tableId) {
@@ -325,13 +268,13 @@ public class Tables {
     }
   }
 
-  public static SortedMap<Table.ID,String> getIdMap(Instance instance) {
+  public static SortedMap<Table.ID,String> getIdToNameMap(Instance instance) {
     SortedMap<Table.ID,String> map = new TreeMap<>();
     populateMap(instance, (k, v) -> map.put(new Table.ID(k), v));
     return map;
   }
 
-  public static SortedMap<String,Table.ID> getNameMap(Instance instance) {
+  public static SortedMap<String,Table.ID> getNameToIdMap(Instance instance) {
     SortedMap<String,Table.ID> map = new TreeMap<>();
     populateMap(instance, (k, v) -> map.put(v, new Table.ID(k)));
     return map;
