@@ -81,11 +81,12 @@ public class RandomizeVolumes {
       log.error("There are not enough volumes configured");
       return 1;
     }
-    Table.ID tableId = new Table.ID(c.tableOperations().tableIdMap().get(tableName));
-    if (null == tableId) {
+    String tblStr = c.tableOperations().tableIdMap().get(tableName);
+    if (null == tblStr) {
       log.error("Could not determine the table ID for table " + tableName);
       return 2;
     }
+    Table.ID tableId = new Table.ID(tblStr);
     TableState tableState = TableManager.getInstance().getTableState(tableId);
     if (TableState.OFFLINE != tableState) {
       log.info("Taking " + tableName + " offline");
