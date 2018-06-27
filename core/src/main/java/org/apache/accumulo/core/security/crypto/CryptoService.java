@@ -41,11 +41,11 @@ public interface CryptoService {
    */
   public class CryptoException extends RuntimeException {
     /**
-	 * 
-	 */
-	private static final long serialVersionUID = -7588781060677839664L;
+    * 
+    */
+    private static final long serialVersionUID = -7588781060677839664L;
 
-	public CryptoException() {
+    public CryptoException() {
       super();
     }
 
