@@ -27,6 +27,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.StringJoiner;
 
 import javax.crypto.Cipher;
@@ -53,15 +54,23 @@ public class AESCryptoService implements CryptoService {
   private static Key encryptingKek = null;
   private static String encryptingKekId = null;
   private static String encryptingKeyManager = null;
-  // private HashMap<String, String> decryptingKeys = new HashMap<String, String>();
+  // Lets just load keks for reading once
+  private static HashMap<String,Key> decryptingKeys = new HashMap<String,Key>();
 
   // Each byte has a valid unicode representation
   private static final String unicodeCharset = "ISO_8859_1";
 
   AESCryptoService(String kekId, String encryptingKeyManager) {
-    AESCryptoService.encryptingKekId = kekId;
-    AESCryptoService.encryptingKek = KeyManager.loadKek(kekId);
-    AESCryptoService.encryptingKeyManager = encryptingKeyManager;
+    switch (encryptingKeyManager) {
+      case KeyManager.URI:
+        AESCryptoService.encryptingKeyManager = encryptingKeyManager;
+        AESCryptoService.encryptingKekId = kekId;
+        AESCryptoService.encryptingKek = KeyManager.loadKekFromUri(kekId);
+        break;
+      default:
+        throw new CryptoException("Unrecognized key manager");
+    }
+
   }
 
   @Override
@@ -85,13 +94,14 @@ public class AESCryptoService implements CryptoService {
   public FileDecrypter getFileDecrypter(CryptoEnvironment environment) {
     CryptoModule cm;
     ParsedCryptoParameters parsed = parseCryptoParameters(environment.getParameters());
+    Key fek = loadDecryptionKek(parsed);
     switch (parsed.getCryptoServiceVersion()) {
       case AESCBCCryptoModule.VERSION:
         cm = new AESCBCCryptoModule();
-        return (cm.getDecrypter());
+        return (cm.getDecrypter(fek));
       case AESGCMCryptoModule.VERSION:
         cm = new AESGCMCryptoModule();
-        return (cm.getDecrypter());
+        return (cm.getDecrypter(fek));
 
       // TODO I suspect we want to leave "U+1F47B" and create an internal NoFileDecrypter
       // so that the crypto service .jar file can pluggable without requiring the
@@ -108,7 +118,7 @@ public class AESCryptoService implements CryptoService {
     String cryptoServiceName;
     String cryptoServiceVersion;
     String keyManagerVersion;
-    String keyId;
+    String kekId;
     byte[] encFek;
 
     public String getCryptoServiceName() {
@@ -135,12 +145,12 @@ public class AESCryptoService implements CryptoService {
       this.keyManagerVersion = keyManagerVersion;
     }
 
-    public String getKeyId() {
-      return keyId;
+    public String getKekId() {
+      return kekId;
     }
 
-    public void setKeyId(String keyId) {
-      this.keyId = keyId;
+    public void setKekId(String kekId) {
+      this.kekId = kekId;
     }
 
     public byte[] getEncFek() {
@@ -178,7 +188,7 @@ public class AESCryptoService implements CryptoService {
     String service = parts[0];
     String version = parts[1];
     String keyVersion = parts[2];
-    String keyId = parts[3];
+    String kekId = parts[3];
     Integer keyLength;
     try {
       keyLength = Integer.parseInt(parts[4]);
@@ -200,10 +210,33 @@ public class AESCryptoService implements CryptoService {
     parsed.setCryptoServiceName(service);
     parsed.setCryptoServiceVersion(version);
     parsed.setKeyManagerVersion(keyVersion);
-    parsed.setKeyId(keyId);
+    parsed.setKekId(kekId);
     parsed.setEncFek(encFek);
 
     return parsed;
+  }
+
+  private static Key loadDecryptionKek(ParsedCryptoParameters params) {
+    Key ret = null;
+    String keyTag = params.getKeyManagerVersion() + "!" + params.getKekId();
+    if (decryptingKeys.get(keyTag) != null) {
+      return (decryptingKeys.get(keyTag));
+    }
+
+    switch (params.keyManagerVersion) {
+      case KeyManager.URI:
+        ret = KeyManager.loadKekFromUri(params.kekId);
+        break;
+      default:
+        throw new CryptoException("Unable to load kek: " + params.kekId);
+    }
+
+    decryptingKeys.put(keyTag, ret);
+
+    if (ret == null)
+      throw new CryptoException("Unable to load decryption KEK");
+
+    return (ret);
   }
 
   private static SecureRandom getSecureRandom(String secureRNG, String secureRNGProvider) {
@@ -230,7 +263,7 @@ public class AESCryptoService implements CryptoService {
   private interface CryptoModule {
     FileEncrypter getEncrypter();
 
-    FileDecrypter getDecrypter();
+    FileDecrypter getDecrypter(Key fek);
   }
 
   public static class AESGCMCryptoModule implements CryptoModule {
@@ -250,8 +283,8 @@ public class AESCryptoService implements CryptoService {
     }
 
     @Override
-    public FileDecrypter getDecrypter() {
-      return new AESGCMFileDecrypter();
+    public FileDecrypter getDecrypter(Key fek) {
+      return new AESGCMFileDecrypter(fek);
     }
 
     public class AESGCMFileEncrypter implements FileEncrypter {
@@ -337,6 +370,10 @@ public class AESCryptoService implements CryptoService {
       private Key fek = null;
       private byte[] initVector = new byte[GCM_IV_LENGTH_IN_BYTES];
 
+      AESGCMFileDecrypter(Key fek) {
+        this.fek = fek;
+      }
+
       @Override
       public InputStream decryptStream(InputStream inputStream) throws CryptoException {
         int bytesRead;
@@ -377,8 +414,8 @@ public class AESCryptoService implements CryptoService {
     }
 
     @Override
-    public FileDecrypter getDecrypter() {
-      return new AESCBCFileDecrypter();
+    public FileDecrypter getDecrypter(Key fek) {
+      return new AESCBCFileDecrypter(fek);
     }
 
     public class AESCBCFileEncrypter implements FileEncrypter {
@@ -426,6 +463,10 @@ public class AESCryptoService implements CryptoService {
     public class AESCBCFileDecrypter implements FileDecrypter {
       private Key fek = null;
       private byte[] initVector = new byte[IV_LENGTH_IN_BYTES];
+
+      AESCBCFileDecrypter(Key fek) {
+        this.fek = fek;
+      }
 
       @Override
       public InputStream decryptStream(InputStream inputStream) throws CryptoException {

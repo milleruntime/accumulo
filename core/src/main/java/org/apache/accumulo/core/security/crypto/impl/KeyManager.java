@@ -35,6 +35,9 @@ import javax.crypto.spec.SecretKeySpec;
 import org.apache.accumulo.core.security.crypto.CryptoService.CryptoException;
 
 public class KeyManager {
+
+  public static final String URI = "uri";
+
   public static Key generateKey(SecureRandom sr, int size) {
     byte[] bytes = new byte[size];
     sr.nextBytes(bytes);
@@ -49,7 +52,7 @@ public class KeyManager {
       result = c.unwrap(fek, "AES", Cipher.SECRET_KEY);
     } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchProviderException
         | NoSuchPaddingException e) {
-      throw new CryptoException("Unable to unwrap file encryption key");
+      throw new CryptoException("Unable to unwrap file encryption key", e);
     }
     return result;
   }
@@ -62,20 +65,20 @@ public class KeyManager {
       result = c.wrap(fek);
     } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchProviderException
         | NoSuchPaddingException | IllegalBlockSizeException e) {
-      throw new CryptoException("Unable to wrap file encryption key");
+      throw new CryptoException("Unable to wrap file encryption key", e);
     }
 
     return result;
   }
 
-  public static SecretKeySpec loadKek(String keyId) {
+  public static SecretKeySpec loadKekFromUri(String keyId) {
     URI uri;
     SecretKeySpec key = null;
     try {
       uri = new URI(keyId);
       key = new SecretKeySpec(Files.readAllBytes(Paths.get(uri.getPath())), "AES");
     } catch (URISyntaxException | IOException e) {
-      throw new CryptoException("Unable to load key encryption key.");
+      throw new CryptoException("Unable to load key encryption key.", e);
     }
 
     return key;
