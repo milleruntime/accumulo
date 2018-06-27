@@ -19,9 +19,13 @@ package org.apache.accumulo.core.security.crypto.impl;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.StringJoiner;
 
@@ -31,9 +35,7 @@ import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.accumulo.core.conf.Property;
 import org.apache.accumulo.core.security.crypto.BlockedInputStream;
 import org.apache.accumulo.core.security.crypto.BlockedOutputStream;
 import org.apache.accumulo.core.security.crypto.CryptoEnvironment;
@@ -46,417 +48,474 @@ import org.apache.accumulo.core.security.crypto.FileEncrypter;
 /**
  * Example implementation of AES encryption for Accumulo
  */
-public class AESCryptoService implements CryptoService {
+public class AESCryptoService implements CryptoService
+{
 
-  @Override
-  public FileEncrypter getFileEncrypter(CryptoEnvironment environment) {
-    CryptoModule cm;
-    switch (environment.getScope()) {
-      case WAL:
-        cm = new AESCBCCryptoModule();
-        cm.init(environment);
-        return cm.getEncrypter();
+	private static Key encryptingKek = null;
+	private static String encryptingKekId = null;
+	private static String encryptingKeyManager = null;
+	//private HashMap<String, String> decryptingKeys = new HashMap<String, String>();
 
-      case RFILE:
-        cm = new AESGCMCryptoModule();
-        cm.init(environment);
-        return cm.getEncrypter();
+	//Each byte has a valid unicode representation
+	private static final String unicodeCharset = "ISO_8859_1";
 
-      default:
-        throw new CryptoException("Unknown scope: " + environment.getScope());
-    }
-  }
+	AESCryptoService(String kekId, String encryptingKeyManager)
+	{
+		AESCryptoService.encryptingKekId = kekId;
+		AESCryptoService.encryptingKek = KeyManager.loadKek(kekId);
+		AESCryptoService.encryptingKeyManager = encryptingKeyManager;
+	}
 
-  @Override
-  public FileDecrypter getFileDecrypter(CryptoEnvironment environment) {
-    CryptoModule cm;
-    ParsedCryptoParameters parsed = parseCryptoParameters(environment.getParameters());
-    switch (parsed.getVersion()) {
-      case AESCBCCryptoModule.VERSION:
-        cm = new AESCBCCryptoModule();
-        cm.init(environment);
-        return (cm.getDecrypter());
-      case AESGCMCryptoModule.VERSION:
-        cm = new AESGCMCryptoModule();
-        cm.init(environment);
-        return (cm.getDecrypter());
+	@Override
+	public FileEncrypter getFileEncrypter(CryptoEnvironment environment)
+	{
+		CryptoModule cm;
+		switch (environment.getScope())
+		{
+		case WAL:
+			cm = new AESCBCCryptoModule();
+			return cm.getEncrypter();
 
-      // TODO I suspect we want to leave "U+1F47B" and create an internal NoFileDecrypter
-      // so that the crypto service .jar file can pluggable without requiring the
-      // NoCryptoService.jar
-      case NoCryptoService.VERSION:
-        return new NoFileDecrypter();
-      default:
-        throw new CryptoException("Unknown crypto module version: " + parsed.getVersion());
-    }
-  }
+		case RFILE:
+			cm = new AESGCMCryptoModule();
+			return cm.getEncrypter();
 
-  static class ParsedCryptoParameters {
-    String cryptoServiceName;
-    String version;
-    String keyInfo;
+		default:
+			throw new CryptoException("Unknown scope: " + environment.getScope());
+		}
+	}
 
-    public String getCryptoServiceName() {
-      return cryptoServiceName;
-    }
+	@Override
+	public FileDecrypter getFileDecrypter(CryptoEnvironment environment)
+	{
+		CryptoModule cm;
+		ParsedCryptoParameters parsed = parseCryptoParameters(environment.getParameters());
+		switch (parsed.getCryptoServiceVersion())
+		{
+		case AESCBCCryptoModule.VERSION:
+			cm = new AESCBCCryptoModule();
+			return (cm.getDecrypter());
+		case AESGCMCryptoModule.VERSION:
+			cm = new AESGCMCryptoModule();
+			return (cm.getDecrypter());
 
-    public void setCryptoServiceName(String CryptoServiceName) {
-      this.cryptoServiceName = CryptoServiceName;
-    }
+			// TODO I suspect we want to leave "U+1F47B" and create an internal NoFileDecrypter
+			// so that the crypto service .jar file can pluggable without requiring the
+			// NoCryptoService.jar
+		case NoCryptoService.VERSION:
+			return new NoFileDecrypter();
+		default:
+			throw new CryptoException("Unknown crypto module version: " + parsed.getCryptoServiceVersion());
+		}
+	}
 
-    public String getVersion() {
-      return version;
-    }
+	static class ParsedCryptoParameters
+	{
+		String cryptoServiceName;
+		String cryptoServiceVersion;
+		String keyManagerVersion;
+		String keyId;
+		byte[] encFek;
+		public String getCryptoServiceName()
+		{
+			return cryptoServiceName;
+		}
+		public void setCryptoServiceName(String cryptoServiceName)
+		{
+			this.cryptoServiceName = cryptoServiceName;
+		}
+		public String getCryptoServiceVersion()
+		{
+			return cryptoServiceVersion;
+		}
+		public void setCryptoServiceVersion(String cryptoServiceVersion)
+		{
+			this.cryptoServiceVersion = cryptoServiceVersion;
+		}
+		
+		public String getKeyManagerVersion()
+		{
+			return keyManagerVersion;
+		}
+		public void setKeyManagerVersion(String keyManagerVersion)
+		{
+			this.keyManagerVersion = keyManagerVersion;
+		}
+		public String getKeyId()
+		{
+			return keyId;
+		}
+		public void setKeyId(String keyId)
+		{
+			this.keyId = keyId;
+		}
+		public byte[] getEncFek()
+		{
+			return encFek;
+		}
+		public void setEncFek(byte[] encFek)
+		{
+			this.encFek = encFek;
+		}
 
-    public void setVersion(String version) {
-      this.version = version;
-    }
+	}
 
-    public String getKeyInfo() {
-      return keyInfo;
-    }
+	private static String createCryptoParameters(String version, Key fek)
+	{
+		
+		StringJoiner sj = new StringJoiner("!");
+		sj.add("org.apache.accumulo.core.security.crypto.impl.AESCryptoService");
+		sj.add(version);
+		sj.add(encryptingKeyManager);
+		sj.add(encryptingKekId);
+		byte[] wrappedFek = KeyManager.wrapKey(fek, encryptingKek);
+		String fekString = new String(wrappedFek, Charset.forName(unicodeCharset));
+		sj.add(Integer.toString(fekString.length()));
+		sj.add(fekString);
+		return (sj.toString());
+	}
 
-    public void setKeyInfo(String keyInfo) {
-      this.keyInfo = keyInfo;
-    }
-  }
+	private static ParsedCryptoParameters parseCryptoParameters(String parameters)
+	{
+		String[] parts = parameters.split("!");
+		if (parts.length < 6)
+		{
+			throw new CryptoException(
+					"Invalid parameters string, probably generated by a different CryptoService");
+		}
+		ParsedCryptoParameters parsed = new ParsedCryptoParameters();
 
-  private static String createCryptoParameters(String version, String keyInfo) {
-    StringJoiner sj = new StringJoiner("!");
-    sj.add("org.apache.accumulo.core.security.crypto.impl.AESCryptoService");
-    sj.add(version);
-    sj.add(keyInfo);
-    return (sj.toString());
-  }
+		String service = parts[0];
+		String version = parts[1];
+		String keyVersion = parts[2];
+		String keyId = parts[3];
+		Integer keyLength;
+		try
+		{
+			keyLength = Integer.parseInt(parts[4]);
+		}
+		catch (NumberFormatException e)
+		{
+			throw new CryptoException(
+					"Invalid key length, possibly invalid parameters string. Check CryptoService", e);
+		}
 
-  private static ParsedCryptoParameters parseCryptoParameters(String parameters) {
-    if (parameters.split("!").length < 3) {
-      throw new CryptoException(
-          "Invalid parameters string, probably generated by a different CryptoService");
-    }
-    ParsedCryptoParameters parsed = new ParsedCryptoParameters();
-    int versionIndex = parameters.indexOf("!");
-    int keyIndex = parameters.indexOf("!", versionIndex + 1);
+		Integer keyOffset = parts[0].length() + parts[1].length() + parts[2].length()
+				+ parts[3].length() + parts[4].length() + 5; // 5 delims prior to the key
 
-    String service = parameters.substring(0, versionIndex);
-    String version = parameters.substring(versionIndex + 1, keyIndex);
-    String keyInfo = parameters.substring(keyIndex + 1, parameters.length());
+		if (keyOffset + keyLength != parameters.length())
+		{
+			throw new CryptoException(
+					"Invalid parameters string, probably generated by a different CryptoService");
+		}
+		byte[] encFek = (parameters.substring(keyOffset, keyOffset+keyLength)).getBytes(Charset.forName(unicodeCharset));
 
-    parsed.setCryptoServiceName(service);
-    parsed.setVersion(version);
-    parsed.setKeyInfo(keyInfo);
-    return parsed;
-  }
+		parsed.setCryptoServiceName(service);
+		parsed.setCryptoServiceVersion(version);
+		parsed.setKeyManagerVersion(keyVersion);
+		parsed.setKeyId(keyId);
+		parsed.setEncFek(encFek);
+		
+		return parsed;
+	}
 
-  /**
-   * 
-   * This interface lists the methods needed by CryptoModules which are responsible for tracking
-   * version and preparing encrypters/decrypters for use.
-   *
-   */
-  private interface CryptoModule {
-    void init(CryptoEnvironment environment);
+	private static SecureRandom getSecureRandom(String secureRNG, String secureRNGProvider)
+	{
+		SecureRandom secureRandom = null;
+		try
+		{
+			secureRandom = SecureRandom.getInstance(secureRNG, secureRNGProvider);
 
-    FileEncrypter getEncrypter();
+			// Immediately seed the generator
+			byte[] throwAway = new byte[16];
+			secureRandom.nextBytes(throwAway);
 
-    FileDecrypter getDecrypter();
-  }
+		}
+		catch (NoSuchAlgorithmException | NoSuchProviderException e)
+		{
+			throw new CryptoException("Unable to generate secure random.", e);
+		}
+		return secureRandom;
+	}
 
-  public static class AESGCMCryptoModule implements CryptoModule {
-    private static final String VERSION = "U+1F43B"; // unicode bear emoji rawr
+	/**
+	 * 
+	 * This interface lists the methods needed by CryptoModules which are responsible for tracking
+	 * version and preparing encrypters/decrypters for use.
+	 *
+	 */
+	private interface CryptoModule
+	{
+		FileEncrypter getEncrypter();
 
-    private final Integer GCM_IV_LENGTH_IN_BYTES = 12;
-    private final Integer KEY_LENGTH_IN_BYTES = 16;
-    // 128-bit tags are the longest available for GCM
-    private final Integer GCM_TAG_LENGTH_IN_BITS = 16 * 8;
+		FileDecrypter getDecrypter();
+	}
 
-    /**
-     * The actual secret key to use
-     */
-    public static final String CRYPTO_SECRET_KEY_PROPERTY = Property.TABLE_CRYPTO_SENSITIVE_PREFIX
-        + "key";
+	public static class AESGCMCryptoModule implements CryptoModule
+	{
+		private static final String VERSION = "U+1F43B"; // unicode bear emoji rawr
 
-    private final String transformation = "AES/GCM/NoPadding";
-    private SecretKeySpec skeySpec;
-    private byte[] initVector = new byte[GCM_IV_LENGTH_IN_BYTES];
-    private boolean initialized = false;
-    private boolean ivReused = false;
+		private final Integer GCM_IV_LENGTH_IN_BYTES = 12;
+		private final Integer KEY_LENGTH_IN_BYTES = 32;
 
-    public void init(CryptoEnvironment environment) {
-      String key = environment.getConf().get(CRYPTO_SECRET_KEY_PROPERTY);
+		// 128-bit tags are the longest available for GCM
+		private final Integer GCM_TAG_LENGTH_IN_BITS = 16 * 8;
+		private final String transformation = "AES/GCM/NoPadding";
+		private boolean ivReused = false;
 
-      // do some basic validation
-      if (key == null) {
-        throw new CryptoException("Failed AESEncryptionStrategy init - missing required "
-            + "configuration property: " + CRYPTO_SECRET_KEY_PROPERTY);
-      }
-      if (key.getBytes().length != KEY_LENGTH_IN_BYTES) {
-        throw new CryptoException("Failed AESEncryptionStrategy init - key length not "
-            + KEY_LENGTH_IN_BYTES + " provided: " + key.getBytes().length);
-      }
+		@Override
+		public FileEncrypter getEncrypter()
+		{
+			return new AESGCMFileEncrypter();
+		}
 
-      this.skeySpec = new SecretKeySpec(key.getBytes(), "AES");
-      initialized = true;
+		@Override
+		public FileDecrypter getDecrypter()
+		{
+			return new AESGCMFileDecrypter();
+		}
 
-      this.initialized = true;
-    }
+		public class AESGCMFileEncrypter implements FileEncrypter
+		{
 
-    @Override
-    public FileEncrypter getEncrypter() {
-      if (this.initialized) {
-        return new AESGCMFileEncrypter();
-      } else {
-        throw new CryptoException("Unable to encrypt with an uninitialized module");
-      }
-    }
+			private byte[] firstInitVector = new byte[GCM_IV_LENGTH_IN_BYTES];
+			private SecureRandom sr = getSecureRandom("SHA1PRNG", "SUN");
+			private Key fek = KeyManager.generateKey(sr, KEY_LENGTH_IN_BYTES);
+			private byte[] initVector = new byte[GCM_IV_LENGTH_IN_BYTES];
 
-    @Override
-    public FileDecrypter getDecrypter() {
-      if (this.initialized) {
-        return new AESGCMFileDecrypter();
-      } else {
-        throw new CryptoException("Unable to encrypt with an uninitialized module");
-      }
-    }
+			AESGCMFileEncrypter()
+			{
 
-    public class AESGCMFileEncrypter implements FileEncrypter {
+				sr.nextBytes(initVector);
+				firstInitVector = Arrays.copyOf(initVector, initVector.length);
+			}
 
-      private byte[] firstInitVector = new byte[GCM_IV_LENGTH_IN_BYTES];
+			@Override
+			public OutputStream encryptStream(OutputStream outputStream) throws CryptoException
+			{
+				if (ivReused)
+				{
+					throw new CryptoException(
+							"AESGCMCryptoModule is attempting a Key/IV reuse which is forbidden. Too many RBlocks.");
+				}
+				incrementIV(initVector, initVector.length - 1);
+				if (Arrays.equals(initVector, firstInitVector))
+				{
+					ivReused = true; // This will allow us to write the final block, since the
+					// initialization vector
+					// is always incremented before use.
+				}
 
-      AESGCMFileEncrypter() {
-        CryptoUtils.getSha1SecureRandom().nextBytes(initVector);
-        firstInitVector = Arrays.copyOf(initVector, initVector.length);
-      }
+				Cipher cipher;
+				try
+				{
+					cipher = Cipher.getInstance(transformation);
+					cipher.init(Cipher.ENCRYPT_MODE, fek, new GCMParameterSpec(
+							GCM_TAG_LENGTH_IN_BITS, initVector));
+				}
+				catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
+						| InvalidAlgorithmParameterException e)
+				{
+					throw new CryptoException("Unable to initialize cipher", e);
+				}
 
-      @Override
-      public OutputStream encryptStream(OutputStream outputStream) throws CryptoException {
-        if (!initialized)
-          throw new CryptoException("AESGCMCryptoModule not initialized.");
+				CipherOutputStream cos = new CipherOutputStream(outputStream, cipher);
+				try
+				{
+					cos.write(initVector);
+					cos.close();
+				}
+				catch (IOException e)
+				{
+					throw new CryptoException("Unable to write IV to stream", e);
+				}
 
-        if (ivReused) {
-          throw new CryptoException(
-              "AESGCMCryptoModule is attempting a Key/IV reuse which is forbidden. Too many RBlocks.");
-        }
-        incrementIV(initVector, initVector.length - 1);
-        if (Arrays.equals(initVector, firstInitVector)) {
-          ivReused = true; // This will allow us to write the final block, since the
-          // initialization vector
-          // is always incremented before use.
-        }
+				// Prevent underlying stream from being closed with DiscardCloseOutputStream
+				// Without this, when the crypto stream is closed (in order to flush its last bytes)
+				// the underlying RFile stream will *also* be closed, and that's undesirable as the
+				// cipher
+				// stream is closed for every block written.
+				return new BlockedOutputStream(new DiscardCloseOutputStream(cos),
+						cipher.getBlockSize(), 1024);
+			}
 
-        Cipher cipher;
-        try {
-          cipher = Cipher.getInstance(transformation);
-          cipher.init(Cipher.ENCRYPT_MODE, skeySpec,
-              new GCMParameterSpec(GCM_TAG_LENGTH_IN_BITS, initVector));
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
-            | InvalidAlgorithmParameterException e) {
-          throw new CryptoException(e);
-        }
+			/**
+			 * Because IVs can be longer than longs, this increments arbitrarily sized byte arrays
+			 * by 1, with a roll over to 0 after the max value is reached.
+			 *
+			 * @param iv
+			 *            The iv to be incremented
+			 * @param i
+			 *            The current byte being incremented
+			 */
+			void incrementIV(byte[] iv, int i)
+			{
+				iv[i]++;
+				if (iv[i] == 0)
+				{
+					if (i != 0)
+					{
+						incrementIV(iv, i - 1);
+					}
+					else
+						return;
+				}
 
-        CipherOutputStream cos = new CipherOutputStream(outputStream, cipher);
-        try {
-          cos.write(initVector);
-        } catch (IOException e) {
-          try {
-            cos.close();
-          } catch (IOException ioe) {
-            throw new CryptoException(ioe);
-          }
-          throw new CryptoException(e);
-        }
+			}
 
-        // Prevent underlying stream from being closed with DiscardCloseOutputStream
-        // Without this, when the crypto stream is closed (in order to flush its last bytes)
-        // the underlying RFile stream will *also* be closed, and that's undesirable as the
-        // cipher
-        // stream is closed for every block written.
-        return new BlockedOutputStream(new DiscardCloseOutputStream(cos), cipher.getBlockSize(),
-            1024);
-      }
+			@Override
+			public String getParameters()
+			{
+				return (createCryptoParameters(VERSION, fek));
+			}
+		}
 
-      /**
-       * Because IVs can be longer than longs, this increments arbitrarily sized byte arrays by 1,
-       * with a roll over to 0 after the max value is reached.
-       *
-       * @param iv
-       *          The iv to be incremented
-       * @param i
-       *          The current byte being incremented
-       */
-      void incrementIV(byte[] iv, int i) {
-        iv[i]++;
-        if (iv[i] == 0) {
-          if (i != 0) {
-            incrementIV(iv, i - 1);
-          } else
-            return;
-        }
+		public class AESGCMFileDecrypter implements FileDecrypter
+		{
+			private Key fek = null;
+			private byte[] initVector = new byte[GCM_IV_LENGTH_IN_BYTES];
 
-      }
+			@Override
+			public InputStream decryptStream(InputStream inputStream) throws CryptoException
+			{
+				int bytesRead;
+				try
+				{
+					bytesRead = inputStream.read(initVector);
+				}
+				catch (IOException e)
+				{
+					throw new CryptoException("Unable to read IV from stream", e);
+				}
+				if (bytesRead != GCM_IV_LENGTH_IN_BYTES)
+					throw new CryptoException("Read " + bytesRead + " bytes, not IV length of "
+							+ GCM_IV_LENGTH_IN_BYTES + " in decryptStream.");
 
-      @Override
-      public String getParameters() {
-        return (createCryptoParameters(VERSION, "kek/fek info go here"));
-      }
-    }
+				Cipher cipher;
+				try
+				{
+					cipher = Cipher.getInstance(transformation);
+					cipher.init(Cipher.DECRYPT_MODE, fek, new GCMParameterSpec(
+							GCM_TAG_LENGTH_IN_BITS, initVector));
+				}
+				catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
+						| InvalidAlgorithmParameterException e)
+				{
+					throw new CryptoException("Unable to initialize cipher", e);
+				}
 
-    public class AESGCMFileDecrypter implements FileDecrypter {
-      @Override
-      public InputStream decryptStream(InputStream inputStream) throws CryptoException {
-        if (!initialized)
-          throw new CryptoException("AESEncryptionStrategy not initialized.");
-        int bytesRead;
-        try {
-          bytesRead = inputStream.read(initVector);
-        } catch (IOException e) {
-          throw new CryptoException(e);
-        }
-        if (bytesRead != GCM_IV_LENGTH_IN_BYTES)
-          throw new CryptoException("Read " + bytesRead + " bytes, not IV length of "
-              + GCM_IV_LENGTH_IN_BYTES + " in decryptStream.");
+				CipherInputStream cis = new CipherInputStream(inputStream, cipher);
+				return new BlockedInputStream(cis, cipher.getBlockSize(), 1024);
+			}
+		}
+	}
 
-        Cipher cipher;
-        try {
-          cipher = Cipher.getInstance(transformation);
-          cipher.init(Cipher.DECRYPT_MODE, skeySpec,
-              new GCMParameterSpec(GCM_TAG_LENGTH_IN_BITS, initVector));
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
-            | InvalidAlgorithmParameterException e) {
-          throw new CryptoException(e);
-        }
+	public static class AESCBCCryptoModule implements CryptoModule
+	{
+		public static final String VERSION = "U+1f600"; // unicode grinning face emoji
+		private final Integer IV_LENGTH_IN_BYTES = 16;
+		private final Integer KEY_LENGTH_IN_BYTES = 16;
+		private final String transformation = "AES/CBC/NoPadding";
 
-        CipherInputStream cis = new CipherInputStream(inputStream, cipher);
-        return new BlockedInputStream(cis, cipher.getBlockSize(), 1024);
-      }
-    }
-  }
+		@Override
+		public FileEncrypter getEncrypter()
+		{
+			return new AESCBCFileEncrypter();
+		}
 
-  public static class AESCBCCryptoModule implements CryptoModule {
+		@Override
+		public FileDecrypter getDecrypter()
+		{
+			return new AESCBCFileDecrypter();
+		}
 
-    public static final String VERSION = "U+1f600"; // unicode grinning face emoji
-    private final Integer IV_LENGTH_IN_BYTES = 16;
-    private final Integer KEY_LENGTH_IN_BYTES = 16;
-    /**
-     * The actual secret key to use
-     */
-    public static final String CRYPTO_SECRET_KEY_PROPERTY = Property.TABLE_CRYPTO_SENSITIVE_PREFIX
-        + "key";
+		public class AESCBCFileEncrypter implements FileEncrypter
+		{
 
-    private final String transformation = "AES/CBC/NoPadding";
-    private SecretKeySpec skeySpec;
-    private final byte[] initVector = new byte[IV_LENGTH_IN_BYTES];
-    private boolean initialized = false;
+			private SecureRandom sr = getSecureRandom("SHA1PRNG", "SUN");
+			private Key fek = KeyManager.generateKey(sr, KEY_LENGTH_IN_BYTES);
+			private byte[] initVector = new byte[IV_LENGTH_IN_BYTES];
 
-    @Override
-    public void init(CryptoEnvironment environment) {
+			@Override
+			public OutputStream encryptStream(OutputStream outputStream) throws CryptoException
+			{
 
-      String key = environment.getConf().get(CRYPTO_SECRET_KEY_PROPERTY);
+				CryptoUtils.getSha1SecureRandom().nextBytes(initVector);
+				Cipher cipher;
+				try
+				{
+					cipher = Cipher.getInstance(transformation);
+					cipher.init(Cipher.ENCRYPT_MODE, fek, new IvParameterSpec(initVector));
+				}
+				catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
+						| InvalidAlgorithmParameterException e)
+				{
+					throw new CryptoException("Unable to initialize cipher", e);
+				}
 
-      // do some basic validation
-      if (key == null) {
-        throw new CryptoException("Failed AESEncryptionStrategy init - missing required "
-            + "configuration property: " + CRYPTO_SECRET_KEY_PROPERTY);
-      }
-      if (key.getBytes().length != KEY_LENGTH_IN_BYTES) {
-        throw new CryptoException("Failed AESEncryptionStrategy init - key length not "
-            + KEY_LENGTH_IN_BYTES + " provided: " + key.getBytes().length);
-      }
+				CipherOutputStream cos = new CipherOutputStream(outputStream, cipher);
+				try
+				{
+					cos.write(initVector);
+					cos.close();
+				}
+				catch (IOException e)
+				{
+					throw new CryptoException("Unable to write IV to stream", e);
+				}
 
-      this.skeySpec = new SecretKeySpec(key.getBytes(), "AES");
-      initialized = true;
+				// Prevent underlying stream from being closed with DiscardCloseOutputStream
+				// Without this, when the crypto stream is closed (in order to flush its last bytes)
+				// the underlying RFile stream will *also* be closed, and that's undesirable as the
+				// cipher
+				// stream is closed for every block written.
+				return new BlockedOutputStream(new DiscardCloseOutputStream(cos),
+						cipher.getBlockSize(), 1024);
+			}
 
-      this.initialized = true;
-    }
+			@Override
+			public String getParameters()
+			{
+				return (createCryptoParameters(VERSION, fek));
+			}
+		}
 
-    @Override
-    public FileEncrypter getEncrypter() {
-      if (this.initialized) {
-        return new AESCBCFileEncrypter();
-      } else {
-        throw new CryptoException("Unable to encrypt with an uninitialized module");
-      }
-    }
+		public class AESCBCFileDecrypter implements FileDecrypter
+		{
+			private Key fek = null;
+			private byte[] initVector = new byte[IV_LENGTH_IN_BYTES];
 
-    @Override
-    public FileDecrypter getDecrypter() {
-      if (this.initialized) {
-        return new AESCBCFileDecrypter();
-      } else {
-        throw new CryptoException("Unable to decrypt with an uninitialized module");
-      }
-    }
+			@Override
+			public InputStream decryptStream(InputStream inputStream) throws CryptoException
+			{
+				int bytesRead;
+				try
+				{
+					bytesRead = inputStream.read(initVector);
+				}
+				catch (IOException e)
+				{
+					throw new CryptoException("Unable to read IV from stream", e);
+				}
+				if (bytesRead != IV_LENGTH_IN_BYTES)
+					throw new CryptoException("Read " + bytesRead + " bytes, not IV length of "
+							+ IV_LENGTH_IN_BYTES + " in decryptStream.");
 
-    public class AESCBCFileEncrypter implements FileEncrypter {
-      @Override
-      public OutputStream encryptStream(OutputStream outputStream) throws CryptoException {
-        if (!initialized)
-          throw new CryptoException("AESCBCCryptoModule not initialized.");
+				Cipher cipher;
+				try
+				{
+					cipher = Cipher.getInstance(transformation);
+					cipher.init(Cipher.DECRYPT_MODE, fek, new IvParameterSpec(initVector));
+				}
+				catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
+						| InvalidAlgorithmParameterException e)
+				{
+					throw new CryptoException("Unable to initialize cipher", e);
+				}
 
-        CryptoUtils.getSha1SecureRandom().nextBytes(initVector);
-        Cipher cipher;
-        try {
-          cipher = Cipher.getInstance(transformation);
-          cipher.init(Cipher.ENCRYPT_MODE, skeySpec, new IvParameterSpec(initVector));
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
-            | InvalidAlgorithmParameterException e) {
-          throw new CryptoException(e);
-        }
-
-        CipherOutputStream cos = new CipherOutputStream(outputStream, cipher);
-        try {
-          cos.write(initVector);
-        } catch (IOException e) {
-          try {
-            cos.close();
-          } catch (IOException ioe) {
-            throw new CryptoException(ioe);
-          }
-          throw new CryptoException(e);
-        }
-
-        // Prevent underlying stream from being closed with DiscardCloseOutputStream
-        // Without this, when the crypto stream is closed (in order to flush its last bytes)
-        // the underlying RFile stream will *also* be closed, and that's undesirable as the
-        // cipher
-        // stream is closed for every block written.
-        return new BlockedOutputStream(new DiscardCloseOutputStream(cos), cipher.getBlockSize(),
-            1024);
-      }
-
-      @Override
-      public String getParameters() {
-        return (createCryptoParameters(VERSION, "kek/fek info goes here"));
-      }
-    }
-
-    public class AESCBCFileDecrypter implements FileDecrypter {
-      @Override
-      public InputStream decryptStream(InputStream inputStream) throws CryptoException {
-        if (!initialized)
-          throw new CryptoException("AESEncryptionStrategy not initialized.");
-        int bytesRead;
-        try {
-          bytesRead = inputStream.read(initVector);
-        } catch (IOException e) {
-          throw new CryptoException(e);
-        }
-        if (bytesRead != IV_LENGTH_IN_BYTES)
-          throw new CryptoException("Read " + bytesRead + " bytes, not IV length of "
-              + IV_LENGTH_IN_BYTES + " in decryptStream.");
-
-        Cipher cipher;
-        try {
-          cipher = Cipher.getInstance(transformation);
-          cipher.init(Cipher.DECRYPT_MODE, skeySpec, new IvParameterSpec(initVector));
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
-            | InvalidAlgorithmParameterException e) {
-          throw new CryptoException(e);
-        }
-
-        CipherInputStream cis = new CipherInputStream(inputStream, cipher);
-        return new BlockedInputStream(cis, cipher.getBlockSize(), 1024);
-      }
-    }
-  }
+				CipherInputStream cis = new CipherInputStream(inputStream, cipher);
+				return new BlockedInputStream(cis, cipher.getBlockSize(), 1024);
+			}
+		}
+	}
 }
