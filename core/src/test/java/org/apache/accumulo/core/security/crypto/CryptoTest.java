@@ -103,10 +103,13 @@ public class CryptoTest {
     CryptoEnvironment env = new CryptoEnvironment(Scope.RFILE,
         conf.getAllPropertiesWithPrefix(Property.TABLE_PREFIX));
     FileEncrypter encrypter = cryptoService.getFileEncrypter(env);
-    String params = encrypter.getParameters();
+    byte[] params = encrypter.getParameters();
+    env.setParameters(params);
 
     ByteArrayOutputStream out = new ByteArrayOutputStream();
-    OutputStream encrypted = encrypter.encryptStream(out);
+    DataOutputStream dataOut = new DataOutputStream(out);
+    env.writeParams(dataOut);
+    OutputStream encrypted = encrypter.encryptStream(dataOut);
     // System.out.println("after enc out Bytes written " + out.size());
 
     assertNotNull(encrypted);
@@ -116,6 +119,7 @@ public class CryptoTest {
 
     // System.out.println("b4 flush return out bytes = " + out.toByteArray().length);
     cipherOut.close();
+    dataOut.close();
     encrypted.close();
     out.close();
 
@@ -124,7 +128,7 @@ public class CryptoTest {
 
     // decrypt
     ByteArrayInputStream in = new ByteArrayInputStream(cipherText);
-    env.setParameters(params);
+    env.readParams(new DataInputStream(in));
     FileDecrypter decrypter = cryptoService.getFileDecrypter(env);
     DataInputStream decrypted = new DataInputStream(decrypter.decryptStream(in));
     String plainText = decrypted.readUTF();
@@ -166,7 +170,8 @@ public class CryptoTest {
     byte[] encryptedBytes = encrypt(cs, Scope.WAL, CRYPTO_OFF_CONF);
 
     String stringifiedBytes = Arrays.toString(encryptedBytes);
-    String stringifiedMarkerBytes = getStringifiedBytes("U+1F47B", MARKER_STRING, MARKER_INT);
+    String stringifiedMarkerBytes = getStringifiedBytes("U+1F47B".getBytes(), MARKER_STRING,
+        MARKER_INT);
 
     assertEquals(stringifiedBytes, stringifiedMarkerBytes);
 
@@ -179,7 +184,8 @@ public class CryptoTest {
     byte[] encryptedBytes = encrypt(cs, Scope.RFILE, CRYPTO_OFF_CONF);
 
     String stringifiedBytes = Arrays.toString(encryptedBytes);
-    String stringifiedMarkerBytes = getStringifiedBytes("U+1F47B", MARKER_STRING, MARKER_INT);
+    String stringifiedMarkerBytes = getStringifiedBytes("U+1F47B".getBytes(), MARKER_STRING,
+        MARKER_INT);
 
     assertEquals(stringifiedBytes, stringifiedMarkerBytes);
 
@@ -283,14 +289,15 @@ public class CryptoTest {
     CryptoEnvironment env = new CryptoEnvironment(scope,
         conf.getAllPropertiesWithPrefix(Property.TABLE_PREFIX));
     FileEncrypter encrypter = cryptoService.getFileEncrypter(env);
-    String params = encrypter.getParameters();
+    byte[] params = encrypter.getParameters();
 
     assertNotNull("CryptoService returned null FileEncrypter", encrypter);
     assertEquals(cryptoService.getClass(), cs.getClass());
 
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     DataOutputStream dataOut = new DataOutputStream(out);
-    dataOut.writeUTF(params);
+    dataOut.writeInt(params.length);
+    dataOut.write(params);
     DataOutputStream encrypted = new DataOutputStream(
         encrypter.encryptStream(new NoFlushOutputStream(dataOut)));
     assertNotNull(encrypted);
@@ -311,7 +318,7 @@ public class CryptoTest {
     CryptoService cryptoService = CryptoServiceFactory.getConfigured(conf);
     CryptoEnvironment env = new CryptoEnvironment(scope,
         conf.getAllPropertiesWithPrefix(Property.TABLE_PREFIX));
-    env.setParameters(dataIn.readUTF());
+    env.readParams(dataIn);
     FileDecrypter decrypter = cryptoService.getFileDecrypter(env);
 
     DataInputStream decrypted = new DataInputStream(decrypter.decryptStream(dataIn));
@@ -324,12 +331,14 @@ public class CryptoTest {
     dataIn.close();
   }
 
-  private String getStringifiedBytes(String params, String s, int i) throws IOException {
+  private String getStringifiedBytes(byte[] params, String s, int i) throws IOException {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     DataOutputStream dataOut = new DataOutputStream(out);
 
-    if (params != null)
-      dataOut.writeUTF(params);
+    if (params != null) {
+      dataOut.writeInt(params.length);
+      dataOut.write(params);
+    }
     dataOut.writeUTF(s);
     dataOut.writeInt(i);
     dataOut.close();

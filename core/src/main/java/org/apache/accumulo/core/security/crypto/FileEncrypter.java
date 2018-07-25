@@ -22,14 +22,12 @@ public interface FileEncrypter {
   /**
    * Encrypt the OutputStream.
    *
-   * @throws CryptoService.CryptoException
-   *
    * @since 2.0
    */
   OutputStream encryptStream(OutputStream outputStream) throws CryptoService.CryptoException;
 
   /**
-   * Get all the parameters required for encryption. WARNING: This string will get written as part
+   * Get all the parameters required for decryption. WARNING: This byte[] will get written as part
    * of the OutputStream as it is returned (either before or after the encrypted data). Do not
    * return any unencrypted sensitive information.
    *
@@ -41,5 +39,5 @@ public interface FileEncrypter {
    *
    * @since 2.0
    */
-  String getParameters();
+  byte[] getParameters();
 }
