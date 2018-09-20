@@ -321,7 +321,7 @@ public class DfsLogger implements Comparable<DfsLogger> {
   private final ServerContext context;
   private final ServerResources conf;
   private FSDataOutputStream logFile;
-  private DataOutputStream encryptingLogFile = null;
+  private FastOutputStream encryptingLogFile = null;
   private Method sync;
   private Method flush;
   private String logPath;
@@ -440,7 +440,7 @@ public class DfsLogger implements Comparable<DfsLogger> {
       byte[] cryptoParams = encrypter.getDecryptionParameters();
       CryptoUtils.writeParams(cryptoParams, logFile);
 
-      encryptingLogFile = new DataOutputStream(
+      encryptingLogFile = new FastOutputStream(
           encrypter.encryptStream(new NoFlushOutputStream(logFile)));
 
       LogFileKey key = new LogFileKey();
@@ -552,7 +552,7 @@ public class DfsLogger implements Comparable<DfsLogger> {
     }
   }
 
-  private synchronized void write(LogFileKey key, LogFileValue value) throws IOException {
+  private void write(LogFileKey key, LogFileValue value) throws IOException {
     key.write(encryptingLogFile);
     value.write(encryptingLogFile);
     encryptingLogFile.flush();

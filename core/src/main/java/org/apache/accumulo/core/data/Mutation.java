@@ -1724,4 +1724,11 @@ public class Mutation implements Writable {
     return this.useOldDeserialize ? SERIALIZED_FORMAT.VERSION1 : SERIALIZED_FORMAT.VERSION2;
   }
 
+  public byte[] getData() {
+    return data;
+  }
+
+  public List<byte[]> getValues() {
+    return values;
+  }
 }
