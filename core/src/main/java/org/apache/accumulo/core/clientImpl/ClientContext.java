@@ -53,6 +53,7 @@ import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
 import org.apache.accumulo.core.conf.AccumuloConfiguration;
 import org.apache.accumulo.core.conf.ClientProperty;
 import org.apache.accumulo.core.conf.Property;
+import org.apache.accumulo.core.conf.SiteConfiguration;
 import org.apache.accumulo.core.data.TableId;
 import org.apache.accumulo.core.master.state.tables.TableState;
 import org.apache.accumulo.core.metadata.RootTable;
@@ -113,6 +114,17 @@ public class ClientContext implements AccumuloClient {
   private InstanceOperations instanceops = null;
   private ReplicationOperations replicationops = null;
   private SingletonReservation singletonReservation;
+
+  /**
+   * Constructor only used for InitializeContext, where Accumulo has yet to be initialized.
+   */
+  protected ClientContext(SiteConfiguration siteConfig, Configuration hadoopConf) {
+    zooCache = new ZooCacheFactory().getZooCache(
+        siteConfig.get(ClientProperty.INSTANCE_ZOOKEEPERS.getKey()),
+        info.getZooKeepersSessionTimeOut());
+    this.serverConf = siteConfig;
+    this.hadoopConf = hadoopConf;
+  }
 
   private void ensureOpen() {
     if (closed) {
