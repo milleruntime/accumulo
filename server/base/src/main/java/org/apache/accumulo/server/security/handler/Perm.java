@@ -25,6 +25,7 @@ import org.apache.accumulo.core.data.TableId;
 import org.apache.accumulo.core.security.NamespacePermission;
 import org.apache.accumulo.core.security.SystemPermission;
 import org.apache.accumulo.core.security.TablePermission;
+import org.apache.accumulo.server.security.SecurityModule;
 
 /**
  * Pluggable permissions module returned by {@link SecurityModule#perm()} ()}. Lots of room for

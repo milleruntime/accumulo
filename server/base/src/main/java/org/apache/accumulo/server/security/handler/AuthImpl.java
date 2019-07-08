@@ -16,10 +16,10 @@
  */
 package org.apache.accumulo.server.security.handler;
 
-import static org.apache.accumulo.server.security.handler.SecurityModule.ZKUserAuths;
-import static org.apache.accumulo.server.security.handler.SecurityModule.ZKUserNamespacePerms;
-import static org.apache.accumulo.server.security.handler.SecurityModule.ZKUserSysPerms;
-import static org.apache.accumulo.server.security.handler.SecurityModule.ZKUserTablePerms;
+import static org.apache.accumulo.server.security.SecurityModule.ZKUserAuths;
+import static org.apache.accumulo.server.security.SecurityModule.ZKUserNamespacePerms;
+import static org.apache.accumulo.server.security.SecurityModule.ZKUserSysPerms;
+import static org.apache.accumulo.server.security.SecurityModule.ZKUserTablePerms;
 
 import java.util.Set;
 import java.util.TreeSet;
@@ -258,8 +258,7 @@ public class AuthImpl implements Auth {
     }
   }
 
-  @Override
-  public boolean userExists(String user) {
+  private boolean userExists(String user) {
     return zooCache.get(ZKUserPath + "/" + user) != null;
   }
 

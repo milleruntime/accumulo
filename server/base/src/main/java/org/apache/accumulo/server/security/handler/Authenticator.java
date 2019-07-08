@@ -21,6 +21,7 @@ import java.util.Set;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
 import org.apache.accumulo.server.ServerContext;
+import org.apache.accumulo.server.security.SecurityModule;
 
 /**
  * This interface is used for the system which will be used for authenticating a user. If the

@@ -40,6 +40,8 @@ import org.apache.accumulo.fate.zookeeper.ZooCache;
 import org.apache.accumulo.fate.zookeeper.ZooReaderWriter;
 import org.apache.accumulo.fate.zookeeper.ZooUtil;
 import org.apache.accumulo.server.ServerContext;
+import org.apache.accumulo.server.security.Action;
+import org.apache.accumulo.server.security.SecurityModule;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -180,12 +182,12 @@ public class SecurityModuleImpl implements SecurityModule {
   }
 
   @Override
-  public Auth auth() {
-    return this.auth;
+  public boolean check(String user, Action action) {
+    return false;
   }
 
   @Override
-  public Perm perm() {
-    return this.perm;
+  public void perform(Action secureAction) {
+
   }
 }

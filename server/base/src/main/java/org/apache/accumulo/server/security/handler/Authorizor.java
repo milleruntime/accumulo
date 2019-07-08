@@ -23,6 +23,7 @@ import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.security.Authorizations;
 import org.apache.accumulo.core.securityImpl.thrift.TCredentials;
 import org.apache.accumulo.server.ServerContext;
+import org.apache.accumulo.server.security.SecurityModule;
 
 /**
  * This interface is used for the system which will be used for getting a users Authorizations. If

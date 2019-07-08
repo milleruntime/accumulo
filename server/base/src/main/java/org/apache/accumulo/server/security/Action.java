@@ -1,0 +1,38 @@
+package org.apache.accumulo.server.security;
+
+/**
+ * Secure Action to be performed.
+ */
+public enum Action {
+
+  NAMESPACE_CREATE,
+          NAMESPACE_DROP,
+  NAMESPACE_PROPERTY_CHANGE,
+          NAMESPACE_RENAME,
+  TABLE_BULK_IMPORT,
+          TABLE_CANCEL_COMPACT,
+  TABLE_CLONE,
+          TABLE_COMPACT,
+  TABLE_CONDITIONAL_UPDATE,
+          TABLE_CREATE,
+  TABLE_DROP,
+          TABLE_EXPORT,
+  TABLE_FLUSH,
+          TABLE_IMPORT,
+  TABLE_MERGE,
+          TABLE_OFFLINE,
+  TABLE_ONLINE,
+          TABLE_PROPERTY_CHANGE,
+  TABLE_RANGE_DELETION,
+          TABLE_RENAME,
+  TABLE_SCAN,
+          TABLE_SPLIT,
+  TABLE_SUMMARIZE,
+          TABLE_WRITE,
+  USER_AUTHS_CHANGE,
+          USER_CREATE,
+  USER_DROP,
+          USER_PASSWORD_CHANGE
+
+
+}

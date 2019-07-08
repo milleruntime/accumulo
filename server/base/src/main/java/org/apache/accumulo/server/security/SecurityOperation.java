@@ -53,7 +53,6 @@ import org.apache.accumulo.fate.zookeeper.ZooCache;
 import org.apache.accumulo.server.ServerContext;
 import org.apache.accumulo.server.security.handler.KerberosSecurityModule;
 import org.apache.accumulo.server.security.handler.Perm;
-import org.apache.accumulo.server.security.handler.SecurityModule;
 import org.apache.accumulo.server.security.handler.SecurityModuleImpl;
 import org.apache.hadoop.io.Text;
 import org.slf4j.Logger;

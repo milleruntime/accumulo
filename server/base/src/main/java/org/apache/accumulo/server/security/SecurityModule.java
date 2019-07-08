@@ -14,13 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.accumulo.server.security.handler;
+package org.apache.accumulo.server.security;
 
 //TODO Move this into SPI once ready.
+
+import org.apache.accumulo.core.client.AccumuloSecurityException;
+import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
+
 /**
  * A pluggable security module. The {@link #initialize(String, byte[])} method resets all the
- * security for Accumulo. The {@link #auth()} method returns the authorization and authentication
- * module. The {@link #perm()} method returns the permissions module.
+ * security for Accumulo.
  *
  * @since 2.1
  */
@@ -33,21 +36,29 @@ public interface SecurityModule {
   /**
    * Initialize the security for Accumulo. WARNING: Calling this will drop all users for Accumulo
    * and reset security. This is automatically called when Accumulo is initialized.
+   *
+   * The rootUser or System user can perform ALL actions.
    */
   void initialize(String rootUser, byte[] token);
 
-  /**
-   * Return the implemented {@link Auth} module for this SecurityModule.
-   *
-   * @return Auth
-   */
-  Auth auth();
 
   /**
-   * Return the implemented {@link Perm} module for this SecurityModule.
+   * Verify the userPrincipal and serialized {@link AuthenticationToken} are valid.
    *
-   * @return Perm
+   * @param userPrincipal
+   *          the user to authenticate
+   * @param token
+   *          the {@link AuthenticationToken}
+   * @return boolean true if successful or false otherwise
+   * @throws AccumuloSecurityException
+   *           if a problem occurred during authentication
    */
-  Perm perm();
+  boolean authenticate(String userPrincipal, AuthenticationToken token)
+          throws AccumuloSecurityException;
+
+  /**
+   * Check if user can perform the action.
+   */
+  boolean check(String user, Action action);
 
 }

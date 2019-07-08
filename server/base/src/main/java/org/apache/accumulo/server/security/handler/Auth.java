@@ -21,6 +21,7 @@ import java.util.Set;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
 import org.apache.accumulo.core.security.Authorizations;
+import org.apache.accumulo.server.security.SecurityModule;
 
 /**
  * Pluggable authentication and authorization module returned by {@link SecurityModule#auth()}.
