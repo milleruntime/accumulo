@@ -19,10 +19,17 @@ module accumulo.api {
   exports org.apache.accumulo.core.data;
   exports org.apache.accumulo.core.security;
 
+  //requires accumulo.start
   requires hadoop.client.api;
   requires slf4j.api;
   requires com.google.common;
+  requires auto.service;
+  requires gson;
+
   requires libthrift;
   requires org.apache.commons.lang3;
+  requires zookeeper;
+  requires com.github.benmanes.caffeine;
+  requires jcommander;
 
 }
