@@ -118,8 +118,8 @@ public class AccumuloClientIT extends AccumuloClusterHarness {
   @Test
   public void testAccumuloClientBuilder() throws Exception {
     AccumuloClient c = Accumulo.newClient().from(getClientProps()).build();
-    String instanceName = getClientInfo().getInstanceName();
-    String zookeepers = getClientInfo().getZooKeepers();
+    String instanceName = getInstanceName();
+    String zookeepers = getZooKeepers();
 
     ClusterUser testuser1 = getUser(0);
     final String user1 = testuser1.getPrincipal();
@@ -191,7 +191,7 @@ public class AccumuloClientIT extends AccumuloClusterHarness {
     assertEquals(0, SingletonManager.getReservationCount());
     assertEquals(Mode.CLIENT, SingletonManager.getMode());
 
-    try (AccumuloClient c = Accumulo.newClient().from(getClientInfo().getProperties()).build()) {
+    try (AccumuloClient c = Accumulo.newClient().from(getClientProps()).build()) {
       assertEquals(1, SingletonManager.getReservationCount());
 
       c.tableOperations().create(tableName);
@@ -210,7 +210,7 @@ public class AccumuloClientIT extends AccumuloClusterHarness {
 
     assertEquals(0, SingletonManager.getReservationCount());
 
-    AccumuloClient c = Accumulo.newClient().from(getClientInfo().getProperties()).build();
+    AccumuloClient c = Accumulo.newClient().from(getClientProps()).build();
     assertEquals(1, SingletonManager.getReservationCount());
 
     // ensure client created after everything was closed works

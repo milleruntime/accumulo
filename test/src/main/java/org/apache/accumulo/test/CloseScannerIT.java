@@ -47,7 +47,7 @@ public class CloseScannerIT extends AccumuloClusterHarness {
 
       client.tableOperations().create(tableName);
 
-      ReadWriteIT.ingest(client, getClientInfo(), ROWS, COLS, 50, 0, tableName);
+      ReadWriteIT.ingest(client, getClientProps(), ROWS, COLS, 50, 0, tableName);
 
       client.tableOperations().flush(tableName, null, null, true);
 

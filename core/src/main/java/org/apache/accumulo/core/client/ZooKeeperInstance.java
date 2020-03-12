@@ -193,6 +193,7 @@ public class ZooKeeperInstance implements Instance {
     AccumuloConfiguration serverConf = ClientConfConverter.toAccumuloConf(properties);
     return new org.apache.accumulo.core.clientImpl.ConnectorImpl(
         new ClientContext(SingletonReservation.noop(), info, serverConf));
+    //return Connector.from(Accumulo.newClient().from(properties).as(principal, token).build());
   }
 
   @Override

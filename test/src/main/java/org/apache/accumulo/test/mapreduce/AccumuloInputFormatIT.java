@@ -41,7 +41,6 @@ import org.apache.accumulo.core.client.TableNotFoundException;
 import org.apache.accumulo.core.client.admin.NewTableConfiguration;
 import org.apache.accumulo.core.client.sample.RowSampler;
 import org.apache.accumulo.core.client.sample.SamplerConfiguration;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Mutation;
 import org.apache.accumulo.core.data.Range;
@@ -105,11 +104,10 @@ public class AccumuloInputFormatIT extends AccumuloClusterHarness {
 
       Job job = Job.getInstance();
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setInputTableName(job, table);
-      ClientInfo ci = getClientInfo();
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setZooKeeperInstance(job,
-          ci.getInstanceName(), ci.getZooKeepers());
+          getInstanceName(), getZooKeepers());
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setConnectorInfo(job,
-          ci.getPrincipal(), ci.getAuthenticationToken());
+          getPrincipal(), getAuthenticationToken());
 
       // split table
       TreeSet<Text> splitsToAdd = new TreeSet<>();
@@ -288,11 +286,10 @@ public class AccumuloInputFormatIT extends AccumuloClusterHarness {
 
       job.setInputFormatClass(inputFormatClass);
 
-      ClientInfo ci = getClientInfo();
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setZooKeeperInstance(job,
-          ci.getInstanceName(), ci.getZooKeepers());
+          getInstanceName(), getZooKeepers());
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setConnectorInfo(job,
-          ci.getPrincipal(), ci.getAuthenticationToken());
+          getPrincipal(), getAuthenticationToken());
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setInputTableName(job, table);
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setBatchScan(job, batchScan);
       if (sample) {
@@ -402,11 +399,10 @@ public class AccumuloInputFormatIT extends AccumuloClusterHarness {
     try (AccumuloClient accumuloClient = Accumulo.newClient().from(getClientProps()).build()) {
       accumuloClient.tableOperations().create(table);
 
-      ClientInfo ci = getClientInfo();
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setZooKeeperInstance(job,
-          ci.getInstanceName(), ci.getZooKeepers());
+          getInstanceName(), getZooKeepers());
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setConnectorInfo(job,
-          ci.getPrincipal(), ci.getAuthenticationToken());
+          getPrincipal(), getAuthenticationToken());
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setInputTableName(job, table);
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setScanAuthorizations(job,
           auths);

@@ -159,7 +159,7 @@ public class TokenFileIT extends AccumuloClusterHarness {
 
       File tf = folder.newFile("client.properties");
       try (PrintStream out = new PrintStream(tf)) {
-        getClientInfo().getProperties().store(out, "Credentials for " + getClass().getName());
+        getClientProps().store(out, "Credentials for " + getClass().getName());
       }
 
       MRTokenFileTester.main(new String[] {tf.getAbsolutePath(), table1, table2});

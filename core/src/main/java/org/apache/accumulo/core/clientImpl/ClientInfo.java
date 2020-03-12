@@ -90,6 +90,6 @@ public interface ClientInfo {
    * @return ClientInfo given path to client config file
    */
   static ClientInfo from(Path propertiesFile) {
-    return new ClientInfoImpl(propertiesFile);
+    return new ClientInfoImpl(ClientInfoImpl.toProperties(propertiesFile));
   }
 }

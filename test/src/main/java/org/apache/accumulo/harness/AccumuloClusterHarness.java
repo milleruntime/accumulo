@@ -36,7 +36,8 @@ import org.apache.accumulo.core.client.admin.TableOperations;
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
 import org.apache.accumulo.core.client.security.tokens.KerberosToken;
 import org.apache.accumulo.core.client.security.tokens.PasswordToken;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
+import org.apache.accumulo.core.conf.ClientProperty;
+import org.apache.accumulo.core.conf.ConfigurationTypeHelper;
 import org.apache.accumulo.core.conf.Property;
 import org.apache.accumulo.core.security.TablePermission;
 import org.apache.accumulo.harness.conf.AccumuloClusterConfiguration;
@@ -138,7 +139,7 @@ public abstract class AccumuloClusterHarness extends AccumuloITBase
         StandaloneAccumuloClusterConfiguration conf =
             (StandaloneAccumuloClusterConfiguration) clusterConf;
         StandaloneAccumuloCluster standaloneCluster =
-            new StandaloneAccumuloCluster(conf.getClientInfo(), conf.getTmpDirectory(),
+            new StandaloneAccumuloCluster(conf.getClientProperties(), conf.getTmpDirectory(),
                 conf.getUsers(), conf.getServerAccumuloConfDir());
         // If these are provided in the configuration, pass them into the cluster
         standaloneCluster.setAccumuloHome(conf.getAccumuloHome());
@@ -283,9 +284,34 @@ public abstract class AccumuloClusterHarness extends AccumuloITBase
     return getCluster().getClientProperties();
   }
 
-  public static ClientInfo getClientInfo() {
+  private static String getStringProperty(ClientProperty property) {
+    return property.getValue(getCluster().getClientProperties());
+  }
+
+  public static String getInstanceName() {
     checkState(initialized);
-    return ClientInfo.from(getCluster().getClientProperties());
+    return getStringProperty(ClientProperty.INSTANCE_NAME);
+  }
+
+  public static String getZooKeepers() {
+    checkState(initialized);
+    return getStringProperty(ClientProperty.INSTANCE_ZOOKEEPERS);
+  }
+
+  public static int getZooKeepersSessionTimeOut() {
+    checkState(initialized);
+    return (int) ConfigurationTypeHelper
+        .getTimeInMillis(ClientProperty.INSTANCE_ZOOKEEPERS_TIMEOUT.getValue(getClientProps()));
+  }
+
+  public static String getPrincipal() {
+    checkState(initialized);
+    return getStringProperty(ClientProperty.AUTH_PRINCIPAL);
+  }
+
+  public static AuthenticationToken getAuthenticationToken() {
+    checkState(initialized);
+    return ClientProperty.getAuthenticationToken(getClientProps());
   }
 
   public static ServerContext getServerContext() {
@@ -294,7 +320,7 @@ public abstract class AccumuloClusterHarness extends AccumuloITBase
 
   public static boolean saslEnabled() {
     if (initialized) {
-      return getClientInfo().saslEnabled();
+      return Boolean.parseBoolean(getStringProperty(ClientProperty.SASL_ENABLED));
     }
     return false;
   }

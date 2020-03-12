@@ -34,7 +34,6 @@ import org.apache.accumulo.core.client.BatchWriter;
 import org.apache.accumulo.core.client.MutationsRejectedException;
 import org.apache.accumulo.core.client.Scanner;
 import org.apache.accumulo.core.client.TableNotFoundException;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Mutation;
 import org.apache.accumulo.core.data.Value;
@@ -100,11 +99,10 @@ public class AccumuloOutputFormatIT extends AccumuloClusterHarness {
 
       job.setInputFormatClass(org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.class);
 
-      ClientInfo ci = getClientInfo();
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setZooKeeperInstance(job,
-          ci.getInstanceName(), ci.getZooKeepers());
+          getInstanceName(), getZooKeepers());
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setConnectorInfo(job,
-          ci.getPrincipal(), ci.getAuthenticationToken());
+          getPrincipal(), getAuthenticationToken());
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setInputTableName(job, table1);
 
       job.setMapperClass(TestMapper.class);
@@ -116,9 +114,9 @@ public class AccumuloOutputFormatIT extends AccumuloClusterHarness {
       job.setOutputValueClass(Mutation.class);
 
       org.apache.accumulo.core.client.mapreduce.AccumuloOutputFormat.setZooKeeperInstance(job,
-          ci.getInstanceName(), ci.getZooKeepers());
+          getInstanceName(), getZooKeepers());
       org.apache.accumulo.core.client.mapreduce.AccumuloOutputFormat.setConnectorInfo(job,
-          ci.getPrincipal(), ci.getAuthenticationToken());
+          getPrincipal(), getAuthenticationToken());
       org.apache.accumulo.core.client.mapreduce.AccumuloOutputFormat.setCreateTables(job, false);
       org.apache.accumulo.core.client.mapreduce.AccumuloOutputFormat.setDefaultTableName(job,
           table2);

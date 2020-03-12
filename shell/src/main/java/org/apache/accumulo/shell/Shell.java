@@ -57,7 +57,6 @@ import org.apache.accumulo.core.client.TableNotFoundException;
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
 import org.apache.accumulo.core.client.security.tokens.PasswordToken;
 import org.apache.accumulo.core.clientImpl.ClientContext;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.clientImpl.Tables;
 import org.apache.accumulo.core.conf.ClientProperty;
 import org.apache.accumulo.core.conf.Property;
@@ -628,9 +627,9 @@ public class Shell extends ShellOptions implements KeywordExecutable {
   }
 
   public void printInfo() throws IOException {
-    ClientInfo info = ClientInfo.from(accumuloClient.properties());
+    String instName = ClientProperty.INSTANCE_NAME.getValue(accumuloClient.properties());
     reader.print("\n" + SHELL_DESCRIPTION + "\n" + "- \n" + "- version: " + Constants.VERSION + "\n"
-        + "- instance name: " + info.getInstanceName() + "\n" + "- instance id: "
+        + "- instance name: " + instName + "\n" + "- instance id: "
         + accumuloClient.instanceOperations().getInstanceID() + "\n" + "- \n"
         + "- type 'help' for a list of available commands\n" + "- \n");
     reader.flush();
@@ -670,9 +669,9 @@ public class Shell extends ShellOptions implements KeywordExecutable {
 
   public String getDefaultPrompt() {
     Objects.requireNonNull(accumuloClient);
-    ClientInfo info = ClientInfo.from(accumuloClient.properties());
-    return accumuloClient.whoami() + "@" + info.getInstanceName()
-        + (getTableName().isEmpty() ? "" : " ") + getTableName() + "> ";
+    String instName = ClientProperty.INSTANCE_NAME.getValue(accumuloClient.properties());
+    return accumuloClient.whoami() + "@" + instName + (getTableName().isEmpty() ? "" : " ")
+        + getTableName() + "> ";
   }
 
   /**

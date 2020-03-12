@@ -22,7 +22,6 @@ import java.util.Properties;
 
 import org.apache.accumulo.core.client.Accumulo;
 import org.apache.accumulo.core.client.AccumuloClient;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.miniclusterImpl.MiniAccumuloConfigImpl;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -73,7 +72,7 @@ public class SslIT extends ConfigurableMacBase {
   public void bulk() throws Exception {
     Properties props = getClientProperties();
     try (AccumuloClient client = Accumulo.newClient().from(props).build()) {
-      BulkIT.runTest(client, ClientInfo.from(props), cluster.getFileSystem(),
+      BulkIT.runTest(client, props, cluster.getFileSystem(),
           new Path(getCluster().getConfig().getDir().getAbsolutePath(), "tmp"),
           getUniqueNames(1)[0], this.getClass().getName(), testName.getMethodName(), true);
     }

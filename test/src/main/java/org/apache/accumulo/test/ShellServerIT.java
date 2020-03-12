@@ -73,7 +73,6 @@ import org.apache.accumulo.core.client.security.tokens.KerberosToken;
 import org.apache.accumulo.core.client.security.tokens.PasswordToken;
 import org.apache.accumulo.core.client.summary.summarizers.DeletesSummarizer;
 import org.apache.accumulo.core.client.summary.summarizers.FamilySummarizer;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.clientImpl.Namespace;
 import org.apache.accumulo.core.conf.AccumuloConfiguration;
 import org.apache.accumulo.core.conf.DefaultConfiguration;
@@ -180,13 +179,12 @@ public class ShellServerIT extends SharedMiniClusterBase {
 
     TestShell(String user, String rootPass, String instanceName, String zookeepers, File configFile)
         throws IOException {
-      ClientInfo info = ClientInfo.from(configFile.toPath());
       // start the shell
       output = new TestOutputStream();
       input = new StringInputStream();
       shell = new Shell(new ConsoleReader(input, output));
       shell.setLogErrorsToConsole();
-      if (info.saslEnabled()) {
+      if (saslEnabled()) {
         // Pull the kerberos principal out when we're using SASL
         shell.config("-u", user, "-z", instanceName, zookeepers, "--config-file",
             configFile.getAbsolutePath());
@@ -375,8 +373,7 @@ public class ShellServerIT extends SharedMiniClusterBase {
     ts.exec("exporttable -t " + table + " " + exportUri, true);
     DistCp cp = newDistCp(new Configuration(false));
     String import_ = "file://" + new File(rootPath, "ShellServerIT.import");
-    ClientInfo info = ClientInfo.from(getCluster().getClientProperties());
-    if (info.saslEnabled()) {
+    if (saslEnabled()) {
       // DistCp bugs out trying to get a fs delegation token to perform the cp. Just copy it
       // ourselves by hand.
       FileSystem fs = getCluster().getFileSystem();

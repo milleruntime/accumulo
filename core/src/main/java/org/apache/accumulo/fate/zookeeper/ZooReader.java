@@ -240,4 +240,7 @@ public class ZooReader {
     }
   }
 
+  public int getTimeout() {
+    return timeout;
+  }
 }

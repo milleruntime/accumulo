@@ -33,8 +33,8 @@ import org.apache.accumulo.core.client.Accumulo;
 import org.apache.accumulo.core.client.AccumuloClient;
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
 import org.apache.accumulo.core.clientImpl.ClientConfConverter;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.conf.AccumuloConfiguration;
+import org.apache.accumulo.core.conf.ClientProperty;
 import org.apache.accumulo.core.conf.ConfigurationCopy;
 import org.apache.accumulo.core.conf.SiteConfiguration;
 import org.apache.accumulo.core.master.thrift.MasterGoalState;
@@ -59,7 +59,7 @@ public class StandaloneAccumuloCluster implements AccumuloCluster {
       Collections.unmodifiableList(Arrays.asList(ServerType.MASTER, ServerType.TABLET_SERVER,
           ServerType.TRACER, ServerType.GARBAGE_COLLECTOR, ServerType.MONITOR));
 
-  private ClientInfo info;
+  private Properties clientProps;
   private String accumuloHome, clientAccumuloConfDir, serverAccumuloConfDir, hadoopConfDir;
   private Path tmp;
   private List<ClusterUser> users;
@@ -70,9 +70,9 @@ public class StandaloneAccumuloCluster implements AccumuloCluster {
 
   @SuppressFBWarnings(value = "PATH_TRAVERSAL_IN",
       justification = "code runs in same security context as user who provided input file name")
-  public StandaloneAccumuloCluster(ClientInfo info, Path tmp, List<ClusterUser> users,
+  public StandaloneAccumuloCluster(Properties clientProps, Path tmp, List<ClusterUser> users,
       String serverAccumuloConfDir) {
-    this.info = info;
+    this.clientProps = clientProps;
     this.tmp = tmp;
     this.users = users;
     this.serverAccumuloConfDir = serverAccumuloConfDir;
@@ -124,12 +124,12 @@ public class StandaloneAccumuloCluster implements AccumuloCluster {
 
   @Override
   public String getInstanceName() {
-    return info.getInstanceName();
+    return ClientProperty.INSTANCE_NAME.getValue(clientProps);
   }
 
   @Override
   public String getZooKeepers() {
-    return info.getZooKeepers();
+    return ClientProperty.INSTANCE_ZOOKEEPERS.getValue(clientProps);
   }
 
   @Override
@@ -149,12 +149,12 @@ public class StandaloneAccumuloCluster implements AccumuloCluster {
   @Override
   @Deprecated(since = "2.0.0")
   public org.apache.accumulo.core.client.ClientConfiguration getClientConfig() {
-    return ClientConfConverter.toClientConf(info.getProperties());
+    return ClientConfConverter.toClientConf(clientProps);
   }
 
   @Override
   public Properties getClientProperties() {
-    return info.getProperties();
+    return clientProps;
   }
 
   @Override

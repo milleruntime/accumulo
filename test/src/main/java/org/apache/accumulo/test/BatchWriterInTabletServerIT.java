@@ -67,7 +67,8 @@ public class BatchWriterInTabletServerIT extends AccumuloClusterHarness {
     try (AccumuloClient c = Accumulo.newClient().from(getClientProps()).build()) {
       int numEntriesToWritePerEntry = 50;
       IteratorSetting itset = BatchWriterIterator.iteratorSetting(6, 0, 15, 1000,
-          numEntriesToWritePerEntry, t2, c, getAdminToken(), false, false);
+          numEntriesToWritePerEntry, t2, getZooKeepers(), getInstanceName(),
+          getZooKeepersSessionTimeOut(), c.whoami(), getAdminToken(), false, false);
       test(t1, t2, c, itset, numEntriesToWritePerEntry);
     }
   }
@@ -87,7 +88,8 @@ public class BatchWriterInTabletServerIT extends AccumuloClusterHarness {
     try (AccumuloClient c = Accumulo.newClient().from(getClientProps()).build()) {
       int numEntriesToWritePerEntry = 50;
       IteratorSetting itset = BatchWriterIterator.iteratorSetting(6, 0, 15, 1000,
-          numEntriesToWritePerEntry, t2, c, getAdminToken(), true, true);
+          numEntriesToWritePerEntry, t2, getZooKeepers(), getInstanceName(),
+          getZooKeepersSessionTimeOut(), c.whoami(), getAdminToken(), true, true);
       test(t1, t2, c, itset, numEntriesToWritePerEntry);
     }
   }

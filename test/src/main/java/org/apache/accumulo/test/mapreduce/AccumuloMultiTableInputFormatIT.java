@@ -29,7 +29,6 @@ import org.apache.accumulo.core.client.Accumulo;
 import org.apache.accumulo.core.client.AccumuloClient;
 import org.apache.accumulo.core.client.BatchWriter;
 import org.apache.accumulo.core.client.BatchWriterConfig;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Mutation;
 import org.apache.accumulo.core.data.Value;
@@ -104,11 +103,10 @@ public class AccumuloMultiTableInputFormatIT extends AccumuloClusterHarness {
       job.setInputFormatClass(
           org.apache.accumulo.core.client.mapreduce.AccumuloMultiTableInputFormat.class);
 
-      ClientInfo ci = getClientInfo();
       org.apache.accumulo.core.client.mapreduce.AccumuloMultiTableInputFormat
-          .setZooKeeperInstance(job, ci.getInstanceName(), ci.getZooKeepers());
+          .setZooKeeperInstance(job, getInstanceName(), getZooKeepers());
       org.apache.accumulo.core.client.mapreduce.AccumuloMultiTableInputFormat.setConnectorInfo(job,
-          ci.getPrincipal(), ci.getAuthenticationToken());
+          getPrincipal(), getAuthenticationToken());
 
       org.apache.accumulo.core.client.mapreduce.InputTableConfig tableConfig1 =
           new org.apache.accumulo.core.client.mapreduce.InputTableConfig();

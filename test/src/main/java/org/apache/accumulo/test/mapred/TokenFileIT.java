@@ -34,7 +34,6 @@ import org.apache.accumulo.core.client.Accumulo;
 import org.apache.accumulo.core.client.AccumuloClient;
 import org.apache.accumulo.core.client.BatchWriter;
 import org.apache.accumulo.core.client.Scanner;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.clientImpl.Credentials;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Mutation;
@@ -126,9 +125,8 @@ public class TokenFileIT extends AccumuloClusterHarness {
 
       job.setInputFormat(org.apache.accumulo.core.client.mapred.AccumuloInputFormat.class);
 
-      ClientInfo info = getClientInfo();
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setZooKeeperInstance(job,
-          info.getInstanceName(), info.getZooKeepers());
+          getInstanceName(), getZooKeepers());
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setConnectorInfo(job, user,
           tokenFile);
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setInputTableName(job, table1);
@@ -141,7 +139,7 @@ public class TokenFileIT extends AccumuloClusterHarness {
       job.setOutputValueClass(Mutation.class);
 
       org.apache.accumulo.core.client.mapred.AccumuloOutputFormat.setZooKeeperInstance(job,
-          info.getInstanceName(), info.getZooKeepers());
+          getInstanceName(), getZooKeepers());
       org.apache.accumulo.core.client.mapred.AccumuloOutputFormat.setConnectorInfo(job, user,
           tokenFile);
       org.apache.accumulo.core.client.mapred.AccumuloOutputFormat.setCreateTables(job, false);

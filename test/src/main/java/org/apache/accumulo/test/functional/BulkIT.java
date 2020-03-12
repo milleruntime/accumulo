@@ -19,13 +19,13 @@
 package org.apache.accumulo.test.functional;
 
 import java.io.IOException;
+import java.util.Properties;
 
 import org.apache.accumulo.core.client.Accumulo;
 import org.apache.accumulo.core.client.AccumuloClient;
 import org.apache.accumulo.core.client.AccumuloException;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.client.TableNotFoundException;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.harness.AccumuloClusterHarness;
 import org.apache.accumulo.test.TestIngest;
 import org.apache.accumulo.test.TestIngest.IngestParams;
@@ -51,7 +51,7 @@ public class BulkIT extends AccumuloClusterHarness {
   @Test
   public void test() throws Exception {
     try (AccumuloClient client = Accumulo.newClient().from(getClientProps()).build()) {
-      runTest(client, getClientInfo(), getCluster().getFileSystem(),
+      runTest(client, getClientProps(), getCluster().getFileSystem(),
           getCluster().getTemporaryPath(), getUniqueNames(1)[0], this.getClass().getName(),
           testName.getMethodName(), false);
     }
@@ -60,13 +60,13 @@ public class BulkIT extends AccumuloClusterHarness {
   @Test
   public void testOld() throws Exception {
     try (AccumuloClient client = Accumulo.newClient().from(getClientProps()).build()) {
-      runTest(client, getClientInfo(), getCluster().getFileSystem(),
+      runTest(client, getClientProps(), getCluster().getFileSystem(),
           getCluster().getTemporaryPath(), getUniqueNames(1)[0], this.getClass().getName(),
           testName.getMethodName(), true);
     }
   }
 
-  static void runTest(AccumuloClient c, ClientInfo info, FileSystem fs, Path basePath,
+  static void runTest(AccumuloClient c, Properties props, FileSystem fs, Path basePath,
       String tableName, String filePrefix, String dirSuffix, boolean useOld) throws Exception {
     c.tableOperations().create(tableName);
     Path base = new Path(fs.getUri().toString() + basePath, "testBulkFail_" + dirSuffix);
@@ -80,7 +80,7 @@ public class BulkIT extends AccumuloClusterHarness {
     fs.mkdirs(bulkFailures);
     fs.mkdirs(files);
 
-    IngestParams params = new IngestParams(info.getProperties(), tableName, N);
+    IngestParams params = new IngestParams(props, tableName, N);
     params.timestamp = 1;
     params.random = 56;
     params.cols = 1;
@@ -97,7 +97,7 @@ public class BulkIT extends AccumuloClusterHarness {
     TestIngest.ingest(c, fs, params);
 
     bulkLoad(c, tableName, bulkFailures, files, useOld);
-    VerifyParams verifyParams = new VerifyParams(info.getProperties(), tableName, N);
+    VerifyParams verifyParams = new VerifyParams(props, tableName, N);
     verifyParams.random = 56;
     for (int i = 0; i < COUNT; i++) {
       verifyParams.startRow = i * N;

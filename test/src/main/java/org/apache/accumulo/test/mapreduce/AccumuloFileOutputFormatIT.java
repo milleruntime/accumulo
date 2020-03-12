@@ -30,7 +30,6 @@ import org.apache.accumulo.core.client.AccumuloClient;
 import org.apache.accumulo.core.client.BatchWriter;
 import org.apache.accumulo.core.client.sample.RowSampler;
 import org.apache.accumulo.core.client.sample.SamplerConfiguration;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.conf.DefaultConfiguration;
 import org.apache.accumulo.core.crypto.CryptoServiceFactory;
 import org.apache.accumulo.core.data.Key;
@@ -168,11 +167,10 @@ public class AccumuloFileOutputFormatIT extends AccumuloClusterHarness {
 
       job.setInputFormatClass(org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.class);
 
-      ClientInfo ci = getClientInfo();
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setZooKeeperInstance(job,
-          ci.getInstanceName(), ci.getZooKeepers());
+          getInstanceName(), getZooKeepers());
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setConnectorInfo(job,
-          ci.getPrincipal(), ci.getAuthenticationToken());
+          getPrincipal(), getAuthenticationToken());
       org.apache.accumulo.core.client.mapreduce.AccumuloInputFormat.setInputTableName(job, table);
       org.apache.accumulo.core.client.mapreduce.AccumuloFileOutputFormat.setOutputPath(job,
           new Path(args[1]));

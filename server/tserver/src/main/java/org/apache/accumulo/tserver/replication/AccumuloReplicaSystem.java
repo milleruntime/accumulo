@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.accumulo.core.client.Accumulo;
 import org.apache.accumulo.core.client.AccumuloException;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.client.TableNotFoundException;
@@ -46,7 +47,6 @@ import org.apache.accumulo.core.client.security.tokens.KerberosToken;
 import org.apache.accumulo.core.client.security.tokens.PasswordToken;
 import org.apache.accumulo.core.clientImpl.ClientContext;
 import org.apache.accumulo.core.clientImpl.ClientExecReturn;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.clientImpl.ReplicationClient;
 import org.apache.accumulo.core.conf.AccumuloConfiguration;
 import org.apache.accumulo.core.conf.ClientProperty;
@@ -586,8 +586,7 @@ public class AccumuloReplicaSystem implements ReplicaSystem {
     properties.setProperty(ClientProperty.AUTH_PRINCIPAL.getKey(), principal);
     ClientProperty.setAuthenticationToken(properties, token);
 
-    return new ClientContext(SingletonReservation.noop(), ClientInfo.from(properties, token),
-        localConf);
+    return (ClientContext) Accumulo.newClient().from(properties).as(principal, token).build();
   }
 
   protected Set<Integer> consumeWalPrefix(ReplicationTarget target, DataInputStream wal,

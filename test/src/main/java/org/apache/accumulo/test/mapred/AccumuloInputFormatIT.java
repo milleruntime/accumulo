@@ -31,7 +31,6 @@ import org.apache.accumulo.core.client.BatchWriter;
 import org.apache.accumulo.core.client.admin.NewTableConfiguration;
 import org.apache.accumulo.core.client.sample.RowSampler;
 import org.apache.accumulo.core.client.sample.SamplerConfiguration;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Mutation;
 import org.apache.accumulo.core.data.Value;
@@ -126,11 +125,10 @@ public class AccumuloInputFormatIT extends AccumuloClusterHarness {
 
       job.setInputFormat(org.apache.accumulo.core.client.mapred.AccumuloInputFormat.class);
 
-      ClientInfo ci = getClientInfo();
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setZooKeeperInstance(job,
-          ci.getInstanceName(), ci.getZooKeepers());
+          getInstanceName(), getZooKeepers());
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setConnectorInfo(job,
-          ci.getPrincipal(), ci.getAuthenticationToken());
+          getPrincipal(), getAuthenticationToken());
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setInputTableName(job, table);
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setBatchScan(job, batchScan);
       if (sample) {
@@ -228,11 +226,10 @@ public class AccumuloInputFormatIT extends AccumuloClusterHarness {
     try (AccumuloClient accumuloClient = Accumulo.newClient().from(getClientProps()).build()) {
       accumuloClient.tableOperations().create(table);
 
-      ClientInfo ci = getClientInfo();
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setZooKeeperInstance(job,
-          ci.getInstanceName(), ci.getZooKeepers());
+          getInstanceName(), getZooKeepers());
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setConnectorInfo(job,
-          ci.getPrincipal(), ci.getAuthenticationToken());
+          getPrincipal(), getAuthenticationToken());
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setInputTableName(job, table);
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setScanAuthorizations(job, auths);
       org.apache.accumulo.core.client.mapred.AccumuloInputFormat.setScanIsolation(job, isolated);

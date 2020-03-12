@@ -33,7 +33,6 @@ import org.apache.accumulo.core.client.BatchWriterConfig;
 import org.apache.accumulo.core.client.IteratorSetting;
 import org.apache.accumulo.core.client.TableNotFoundException;
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.clientImpl.TabletLocator;
 import org.apache.accumulo.core.data.ByteSequence;
 import org.apache.accumulo.core.data.Key;
@@ -101,17 +100,6 @@ public class BatchWriterIterator extends WrappingIterator {
   private boolean firstWrite = true;
   private Value topValue = null;
   private AccumuloClient accumuloClient;
-
-  public static IteratorSetting iteratorSetting(int priority, int sleepAfterFirstWrite,
-      long batchWriterTimeout, long batchWriterMaxMemory, int numEntriesToWrite, String tableName,
-      AccumuloClient accumuloClient, AuthenticationToken token, boolean clearCacheAfterFirstWrite,
-      boolean splitAfterFirstWrite) {
-    ClientInfo info = ClientInfo.from(accumuloClient.properties());
-    return iteratorSetting(priority, sleepAfterFirstWrite, batchWriterTimeout, batchWriterMaxMemory,
-        numEntriesToWrite, tableName, info.getZooKeepers(), info.getInstanceName(),
-        info.getZooKeepersSessionTimeOut(), accumuloClient.whoami(), token,
-        clearCacheAfterFirstWrite, splitAfterFirstWrite);
-  }
 
   public static IteratorSetting iteratorSetting(int priority, int sleepAfterFirstWrite,
       long batchWriterTimeout, long batchWriterMaxMemory, int numEntriesToWrite, String tableName,

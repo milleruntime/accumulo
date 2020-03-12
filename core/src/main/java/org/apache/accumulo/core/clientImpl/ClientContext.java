@@ -55,6 +55,7 @@ import org.apache.accumulo.core.client.admin.TableOperations;
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
 import org.apache.accumulo.core.conf.AccumuloConfiguration;
 import org.apache.accumulo.core.conf.ClientProperty;
+import org.apache.accumulo.core.conf.ConfigurationTypeHelper;
 import org.apache.accumulo.core.conf.Property;
 import org.apache.accumulo.core.data.TableId;
 import org.apache.accumulo.core.master.state.tables.TableState;
@@ -92,7 +93,9 @@ public class ClientContext implements AccumuloClient {
 
   private static final Logger log = LoggerFactory.getLogger(ClientContext.class);
 
-  private ClientInfo info;
+  // private ClientInfo info;
+  private Properties properties;
+  private AuthenticationToken token;
   private String instanceId;
   private final ZooCache zooCache;
 
@@ -128,16 +131,27 @@ public class ClientContext implements AccumuloClient {
     return () -> Suppliers.memoizeWithExpiration(s::get, 100, TimeUnit.MILLISECONDS).get();
   }
 
+  public ClientContext(Properties clientProperties, AuthenticationToken token) {
+    this(SingletonReservation.noop(), clientProperties, token);
+  }
+
+  public ClientContext(SingletonReservation reservation, Properties props,
+                       AuthenticationToken token) {
+    this(reservation, new Configuration(), props, token, ClientConfConverter.toAccumuloConf(props));
+  }
+
   /**
    * Create a client context with the provided configuration. Legacy client code must provide a
    * no-op SingletonReservation to preserve behavior prior to 2.x. Clients since 2.x should call
    * Accumulo.newClient() builder, which will create a client reservation in
    * {@link ClientBuilderImpl#buildClient}
    */
-  public ClientContext(SingletonReservation reservation, ClientInfo info,
-      AccumuloConfiguration serverConf) {
-    this.info = info;
-    this.hadoopConf = info.getHadoopConf();
+  public ClientContext(SingletonReservation reservation, Configuration hadoopConf, Properties props,
+                       AuthenticationToken token, AccumuloConfiguration serverConf) {
+    this.properties = props;
+    this.token = token;
+    this.hadoopConf = hadoopConf;
+
     zooCache =
         new ZooCacheFactory().getZooCache(info.getZooKeepers(), info.getZooKeepersSessionTimeOut());
     this.serverConf = serverConf;
@@ -203,13 +217,20 @@ public class ClientContext implements AccumuloClient {
     return new AmpleImpl(this);
   }
 
+  private String getString(ClientProperty property) {
+    return property.getValue(properties);
+  }
+
   /**
    * Retrieve the credentials used to construct this context
    */
   public synchronized Credentials getCredentials() {
     ensureOpen();
     if (creds == null) {
-      creds = new Credentials(info.getPrincipal(), info.getAuthenticationToken());
+      if (token == null) {
+        token = ClientProperty.getAuthenticationToken(properties);
+      }
+      creds = new Credentials(getString(ClientProperty.AUTH_PRINCIPAL), token);
     }
     return creds;
   }
@@ -226,7 +247,7 @@ public class ClientContext implements AccumuloClient {
 
   public Properties getProperties() {
     ensureOpen();
-    return info.getProperties();
+    return properties;
   }
 
   /**
@@ -283,7 +304,7 @@ public class ClientContext implements AccumuloClient {
   public BatchWriterConfig getBatchWriterConfig() {
     ensureOpen();
     if (batchWriterConfig == null) {
-      Properties props = info.getProperties();
+      Properties props = properties;
       batchWriterConfig = new BatchWriterConfig();
       Long maxMemory = ClientProperty.BATCH_WRITER_MEMORY_MAX.getBytes(props);
       if (maxMemory != null) {
@@ -396,7 +417,7 @@ public class ClientContext implements AccumuloClient {
    */
   public String getInstanceID() {
     ensureOpen();
-    final String instanceName = info.getInstanceName();
+    final String instanceName = getString(ClientProperty.INSTANCE_NAME);
     if (instanceId == null) {
       instanceId = getInstanceID(zooCache, instanceName);
     }
@@ -440,7 +461,7 @@ public class ClientContext implements AccumuloClient {
    */
   public String getInstanceName() {
     ensureOpen();
-    return info.getInstanceName();
+    return getString(ClientProperty.INSTANCE_NAME);
   }
 
   /**
@@ -450,7 +471,7 @@ public class ClientContext implements AccumuloClient {
    */
   public String getZooKeepers() {
     ensureOpen();
-    return info.getZooKeepers();
+    return getString(ClientProperty.INSTANCE_ZOOKEEPERS);
   }
 
   /**
@@ -460,7 +481,8 @@ public class ClientContext implements AccumuloClient {
    */
   public int getZooKeepersSessionTimeOut() {
     ensureOpen();
-    return info.getZooKeepersSessionTimeOut();
+    return (int) ConfigurationTypeHelper
+        .getTimeInMillis(ClientProperty.INSTANCE_ZOOKEEPERS_TIMEOUT.getValue(properties));
   }
 
   public ZooCache getZooCache() {
@@ -677,6 +699,7 @@ public class ClientContext implements AccumuloClient {
         ClientInfo info = cbi.getClientInfo();
         AccumuloConfiguration config = ClientConfConverter.toAccumuloConf(info.getProperties());
         return new ClientContext(reservation, info, config);
+        //return new ClientContext(reservation, cbi.properties, cbi.token);
       } catch (RuntimeException e) {
         reservation.close();
         throw e;

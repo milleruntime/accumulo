@@ -34,7 +34,6 @@ import org.apache.accumulo.core.client.Accumulo;
 import org.apache.accumulo.core.client.AccumuloClient;
 import org.apache.accumulo.core.client.Scanner;
 import org.apache.accumulo.core.client.admin.InstanceOperations;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.core.conf.Property;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Value;
@@ -100,8 +99,7 @@ public class BadDeleteMarkersCreatedIT extends AccumuloClusterHarness {
     getCluster().getClusterControl().stopAllServers(ServerType.GARBAGE_COLLECTOR);
 
     try (AccumuloClient client = Accumulo.newClient().from(getClientProps()).build()) {
-      ClientInfo info = ClientInfo.from(client.properties());
-      ZooCache zcache = new ZooCache(info.getZooKeepers(), info.getZooKeepersSessionTimeOut());
+      ZooCache zcache = new ZooCache(getZooKeepers(), getZooKeepersSessionTimeOut());
       zcache.clear();
       String path =
           ZooUtil.getRoot(client.instanceOperations().getInstanceID()) + Constants.ZGC_LOCK;

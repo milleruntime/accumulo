@@ -27,13 +27,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 
 import org.apache.accumulo.cluster.ClusterUser;
 import org.apache.accumulo.core.client.Accumulo;
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
 import org.apache.accumulo.core.client.security.tokens.KerberosToken;
 import org.apache.accumulo.core.client.security.tokens.PasswordToken;
-import org.apache.accumulo.core.clientImpl.ClientInfo;
 import org.apache.accumulo.harness.AccumuloClusterHarness.ClusterType;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -93,7 +93,7 @@ public class StandaloneAccumuloClusterConfiguration extends AccumuloClusterPrope
 
   private Map<String,String> conf;
   private String serverUser;
-  private ClientInfo clientInfo;
+  private Properties clientProperties;
   private List<ClusterUser> clusterUsers;
   private File clientPropsFile;
 
@@ -106,8 +106,8 @@ public class StandaloneAccumuloClusterConfiguration extends AccumuloClusterPrope
 
     this.conf = getConfiguration(type);
     this.clientPropsFile = clientPropsFile;
-    clientInfo = ClientInfo.from(Accumulo.newClientProperties()
-        .to(getInstanceName(), getZooKeepers()).as(getAdminPrincipal(), getAdminToken()).build());
+    this.clientProperties =
+        Accumulo.newClientProperties().from(clientPropsFile.getAbsolutePath()).build();
 
     // The user Accumulo is running as
     serverUser = conf.get(ACCUMULO_STANDALONE_SERVER_USER);
@@ -148,8 +148,8 @@ public class StandaloneAccumuloClusterConfiguration extends AccumuloClusterPrope
     return principal;
   }
 
-  public ClientInfo getClientInfo() {
-    return clientInfo;
+  public Properties getClientProperties() {
+    return clientProperties;
   }
 
   public String getPassword() {
