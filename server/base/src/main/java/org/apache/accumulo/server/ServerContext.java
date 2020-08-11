@@ -72,7 +72,7 @@ public class ServerContext extends ClientContext {
   }
 
   private ServerContext(ServerInfo info) {
-    super(SingletonReservation.noop(), info, info.getSiteConfiguration());
+    super(SingletonReservation.noop(), info.getProperties(), info.getAuthenticationToken());
     this.info = info;
     zooReaderWriter = new ZooReaderWriter(info.getSiteConfiguration());
   }

@@ -136,7 +136,7 @@ public class ClientContext implements AccumuloClient {
   }
 
   public ClientContext(SingletonReservation reservation, Properties props,
-                       AuthenticationToken token) {
+      AuthenticationToken token) {
     this(reservation, new Configuration(), props, token, ClientConfConverter.toAccumuloConf(props));
   }
 
@@ -147,13 +147,12 @@ public class ClientContext implements AccumuloClient {
    * {@link ClientBuilderImpl#buildClient}
    */
   public ClientContext(SingletonReservation reservation, Configuration hadoopConf, Properties props,
-                       AuthenticationToken token, AccumuloConfiguration serverConf) {
+      AuthenticationToken token, AccumuloConfiguration serverConf) {
     this.properties = props;
     this.token = token;
     this.hadoopConf = hadoopConf;
 
-    zooCache =
-        new ZooCacheFactory().getZooCache(info.getZooKeepers(), info.getZooKeepersSessionTimeOut());
+    zooCache = new ZooCacheFactory().getZooCache(getZooKeepers(), getZooKeepersSessionTimeOut());
     this.serverConf = serverConf;
     timeoutSupplier = memoizeWithExpiration(
         () -> getConfiguration().getTimeInMillis(Property.GENERAL_RPC_TIMEOUT));
@@ -696,10 +695,7 @@ public class ClientContext implements AccumuloClient {
       SingletonReservation reservation = SingletonManager.getClientReservation();
       try {
         // ClientContext closes reservation unless a RuntimeException is thrown
-        ClientInfo info = cbi.getClientInfo();
-        AccumuloConfiguration config = ClientConfConverter.toAccumuloConf(info.getProperties());
-        return new ClientContext(reservation, info, config);
-        //return new ClientContext(reservation, cbi.properties, cbi.token);
+        return new ClientContext(reservation, cbi.properties, cbi.token);
       } catch (RuntimeException e) {
         reservation.close();
         throw e;

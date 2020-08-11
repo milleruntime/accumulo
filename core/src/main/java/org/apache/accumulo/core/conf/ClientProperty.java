@@ -205,6 +205,16 @@ public enum ClientProperty {
     return ConfigurationTypeHelper.getTimeInMillis(value);
   }
 
+  public Long getTimeInMillisOrDefault(Properties properties) {
+    checkState(getType() == PropertyType.TIMEDURATION, "Invalid type getting time. Type must be "
+        + PropertyType.TIMEDURATION + ", not " + getType());
+    String value = getValue(properties);
+    if (value.isEmpty()) {
+      value = getDefaultValue();
+    }
+    return ConfigurationTypeHelper.getTimeInMillis(value);
+  }
+
   public Integer getInteger(Properties properties) {
     String value = getValue(properties);
     if (value.isEmpty()) {

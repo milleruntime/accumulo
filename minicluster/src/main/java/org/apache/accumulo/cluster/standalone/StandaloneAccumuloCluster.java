@@ -132,11 +132,15 @@ public class StandaloneAccumuloCluster implements AccumuloCluster {
     return ClientProperty.INSTANCE_ZOOKEEPERS.getValue(clientProps);
   }
 
+  public long getZooKeepersSessionTimeOut() {
+    return ClientProperty.INSTANCE_ZOOKEEPERS_TIMEOUT.getTimeInMillisOrDefault(clientProps);
+  }
+
   @Override
   public synchronized ServerContext getServerContext() {
     if (context == null) {
-      context = ServerContext.override(siteConfig, info.getInstanceName(), info.getZooKeepers(),
-          info.getZooKeepersSessionTimeOut());
+      context = ServerContext.override(siteConfig, getInstanceName(), getZooKeepers(),
+          (int) getZooKeepersSessionTimeOut());
     }
     return context;
   }
