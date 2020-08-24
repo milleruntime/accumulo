@@ -93,7 +93,6 @@ public class ClientContext implements AccumuloClient {
 
   private static final Logger log = LoggerFactory.getLogger(ClientContext.class);
 
-  // private ClientInfo info;
   private Properties properties;
   private AuthenticationToken token;
   private String instanceId;
@@ -675,15 +674,6 @@ public class ClientContext implements AccumuloClient {
 
     public ClientBuilderImpl(Function<ClientBuilderImpl<T>,T> builderFunction) {
       this.builderFunction = builderFunction;
-    }
-
-    private ClientInfo getClientInfo() {
-      if (token != null) {
-        ClientProperty.validate(properties, false);
-        return new ClientInfoImpl(properties, token);
-      }
-      ClientProperty.validate(properties);
-      return new ClientInfoImpl(properties);
     }
 
     @Override
