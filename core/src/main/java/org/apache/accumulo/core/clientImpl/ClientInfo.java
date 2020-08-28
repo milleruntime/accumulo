@@ -18,7 +18,6 @@
  */
 package org.apache.accumulo.core.clientImpl;
 
-import java.nio.file.Path;
 import java.util.Properties;
 
 import org.apache.accumulo.core.client.Accumulo;
@@ -84,12 +83,5 @@ public interface ClientInfo {
    */
   static ClientInfo from(Properties properties, AuthenticationToken token) {
     return new ClientInfoImpl(properties, token);
-  }
-
-  /**
-   * @return ClientInfo given path to client config file
-   */
-  static ClientInfo from(Path propertiesFile) {
-    return new ClientInfoImpl(ClientInfoImpl.toProperties(propertiesFile));
   }
 }

@@ -115,6 +115,13 @@ public class AccumuloClientIT extends AccumuloClusterHarness {
     }
   }
 
+  private void checkProps(Properties props, String user, String instanceName, String zk) {
+
+    assertEquals(instanceName, props.getProperty(ClientProperty.INSTANCE_NAME.getKey()));
+    assertEquals(zk, props.getProperty(ClientProperty.INSTANCE_ZOOKEEPERS.getKey()));
+
+  }
+
   @Test
   public void testAccumuloClientBuilder() throws Exception {
     AccumuloClient c = Accumulo.newClient().from(getClientProps()).build();
@@ -131,9 +138,8 @@ public class AccumuloClientIT extends AccumuloClusterHarness {
 
     Properties props = client.properties();
     assertFalse(props.containsKey(ClientProperty.AUTH_TOKEN.getKey()));
-    ClientInfo info = ClientInfo.from(client.properties());
-    assertEquals(instanceName, info.getInstanceName());
-    assertEquals(zookeepers, info.getZooKeepers());
+    assertEquals(instanceName, props.getProperty(ClientProperty.INSTANCE_NAME.getKey()));
+    assertEquals(zookeepers, props.getProperty(ClientProperty.INSTANCE_ZOOKEEPERS.getKey()));
     assertEquals(user1, client.whoami());
     assertEquals(1234, info.getZooKeepersSessionTimeOut());
 

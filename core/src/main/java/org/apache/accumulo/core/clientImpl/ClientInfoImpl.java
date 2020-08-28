@@ -18,19 +18,12 @@
  */
 package org.apache.accumulo.core.clientImpl;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Properties;
 
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
 import org.apache.accumulo.core.conf.ClientProperty;
 import org.apache.accumulo.core.conf.ConfigurationTypeHelper;
 import org.apache.hadoop.conf.Configuration;
-
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 public class ClientInfoImpl implements ClientInfo {
 
@@ -91,24 +84,6 @@ public class ClientInfoImpl implements ClientInfo {
 
   private String getString(ClientProperty property) {
     return property.getValue(properties);
-  }
-
-  @SuppressFBWarnings(value = "PATH_TRAVERSAL_IN",
-      justification = "code runs in same security context as user who provided propertiesFilePath")
-  public static Properties toProperties(String propertiesFilePath) {
-    return toProperties(Paths.get(propertiesFilePath));
-  }
-
-  @SuppressFBWarnings(value = "PATH_TRAVERSAL_IN",
-      justification = "code runs in same security context as user who provided propertiesFile")
-  public static Properties toProperties(Path propertiesFile) {
-    Properties properties = new Properties();
-    try (InputStream is = new FileInputStream(propertiesFile.toFile())) {
-      properties.load(is);
-    } catch (IOException e) {
-      throw new IllegalArgumentException("Failed to load properties from " + propertiesFile, e);
-    }
-    return properties;
   }
 
   @Override

@@ -28,7 +28,7 @@ import org.apache.accumulo.core.client.AccumuloException;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
 import org.apache.accumulo.core.client.security.tokens.PasswordToken;
-import org.apache.accumulo.core.clientImpl.ClientInfoImpl;
+import org.apache.accumulo.core.clientImpl.ClientContext;
 import org.apache.accumulo.core.util.Pair;
 import org.apache.accumulo.miniclusterImpl.MiniAccumuloClusterImpl;
 import org.apache.accumulo.miniclusterImpl.MiniAccumuloConfigImpl;
@@ -167,6 +167,6 @@ public class MiniAccumuloCluster {
   public static Properties getClientProperties(File directory) {
     File clientProps = new File(new File(directory, "conf"), "accumulo-client.properties");
     Preconditions.checkArgument(clientProps.exists());
-    return ClientInfoImpl.toProperties(clientProps.toPath());
+    return ClientContext.toProperties(clientProps.toPath());
   }
 }

@@ -27,7 +27,7 @@ import java.util.Properties;
 import java.util.TreeMap;
 
 import org.apache.accumulo.core.cli.ClientOpts;
-import org.apache.accumulo.core.clientImpl.ClientInfoImpl;
+import org.apache.accumulo.core.clientImpl.ClientContext;
 import org.apache.accumulo.core.conf.ClientProperty;
 import org.apache.hadoop.security.UserGroupInformation;
 
@@ -209,7 +209,7 @@ public class ShellOptionsJC {
   public Properties getClientProperties() {
     Properties props = new Properties();
     if (getClientPropertiesFile() != null) {
-      props = ClientInfoImpl.toProperties(getClientPropertiesFile());
+      props = ClientContext.toProperties(getClientPropertiesFile());
     }
     for (Map.Entry<String,String> entry : commandLineProperties.entrySet()) {
       props.setProperty(entry.getKey(), entry.getValue());

@@ -23,7 +23,11 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 import static org.apache.accumulo.core.metadata.schema.TabletMetadata.ColumnType.LOCATION;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -79,6 +83,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Suppliers;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * This class represents any essential configuration and credentials needed to initiate RPC
@@ -795,12 +801,12 @@ public class ClientContext implements AccumuloClient {
 
     @Override
     public FromOptions<T> from(String propertiesFilePath) {
-      return from(ClientInfoImpl.toProperties(propertiesFilePath));
+      return from(toProperties(propertiesFilePath));
     }
 
     @Override
     public FromOptions<T> from(Path propertiesFile) {
-      return from(ClientInfoImpl.toProperties(propertiesFile));
+      return from(toProperties(propertiesFile));
     }
 
     @Override
@@ -845,5 +851,23 @@ public class ClientContext implements AccumuloClient {
     public void setProperty(ClientProperty property, Integer value) {
       setProperty(property, Integer.toString(value));
     }
+  }
+
+  @SuppressFBWarnings(value = "PATH_TRAVERSAL_IN",
+      justification = "code runs in same security context as user who provided propertiesFilePath")
+  public static Properties toProperties(String propertiesFilePath) {
+    return toProperties(Paths.get(propertiesFilePath));
+  }
+
+  @SuppressFBWarnings(value = "PATH_TRAVERSAL_IN",
+      justification = "code runs in same security context as user who provided propertiesFile")
+  public static Properties toProperties(Path propertiesFile) {
+    Properties properties = new Properties();
+    try (InputStream is = new FileInputStream(propertiesFile.toFile())) {
+      properties.load(is);
+    } catch (IOException e) {
+      throw new IllegalArgumentException("Failed to load properties from " + propertiesFile, e);
+    }
+    return properties;
   }
 }

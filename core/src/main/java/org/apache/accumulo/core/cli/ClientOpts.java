@@ -31,7 +31,7 @@ import java.util.Properties;
 import java.util.Scanner;
 
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
-import org.apache.accumulo.core.clientImpl.ClientInfoImpl;
+import org.apache.accumulo.core.clientImpl.ClientContext;
 import org.apache.accumulo.core.conf.ClientProperty;
 import org.apache.accumulo.core.security.Authorizations;
 import org.apache.accumulo.core.security.ColumnVisibility;
@@ -219,7 +219,7 @@ public class ClientOpts extends Help {
     if (cachedProps == null) {
       cachedProps = new Properties();
       if (getClientConfigFile() != null) {
-        cachedProps = ClientInfoImpl.toProperties(getClientConfigFile());
+        cachedProps = ClientContext.toProperties(getClientConfigFile());
       }
       if (principal != null) {
         cachedProps.setProperty(ClientProperty.AUTH_PRINCIPAL.getKey(), principal);
