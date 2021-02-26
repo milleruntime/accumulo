@@ -18,7 +18,7 @@
  */
 package org.apache.accumulo.core.file.rfile;
 
-import static org.apache.accumulo.core.conf.Property.INSTANCE_CRYPTO_PREFIX;
+import static org.apache.accumulo.core.conf.Property.GENERAL_CRYPTO_PREFIX;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -1801,12 +1801,12 @@ public class RFileTest {
     ConfigurationCopy cfg = new ConfigurationCopy(DefaultConfiguration.getInstance());
     switch (cryptoOn) {
       case CryptoTest.CRYPTO_ON_DISABLED_CONF:
-        cfg.set(INSTANCE_CRYPTO_PREFIX.getKey() + "enabled", "false");
+        cfg.set(GENERAL_CRYPTO_PREFIX.getKey() + "enabled", "false");
         // fall through to set remaining config
       case CryptoTest.CRYPTO_ON_CONF:
-        cfg.set(Property.INSTANCE_CRYPTO_SERVICE,
+        cfg.set(Property.GENERAL_CRYPTO_SERVICE,
             "org.apache.accumulo.core.spi.crypto.AESCryptoService");
-        cfg.set(INSTANCE_CRYPTO_PREFIX.getKey() + "key.uri", CryptoTest.keyPath);
+        cfg.set(GENERAL_CRYPTO_PREFIX.getKey() + "key.uri", CryptoTest.keyPath);
         break;
     }
     return cfg;

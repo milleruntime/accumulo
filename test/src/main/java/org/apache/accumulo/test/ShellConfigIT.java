@@ -107,12 +107,12 @@ public class ShellConfigIT extends AccumuloClusterHarness {
       fail("Unknown token type");
     }
 
-    assertTrue(Property.INSTANCE_CRYPTO_PREFIX.isExperimental());
-    assertTrue(Property.INSTANCE_CRYPTO_SERVICE.isExperimental());
+    assertTrue(Property.GENERAL_CRYPTO_PREFIX.isExperimental());
+    assertTrue(Property.GENERAL_CRYPTO_SERVICE.isExperimental());
 
     String configOutput = ts.exec("config");
 
     assertTrue(configOutput.contains(PERTABLE_CHOOSER_PROP));
-    assertFalse(configOutput.contains(Property.INSTANCE_CRYPTO_SERVICE.getKey()));
+    assertFalse(configOutput.contains(Property.GENERAL_CRYPTO_SERVICE.getKey()));
   }
 }

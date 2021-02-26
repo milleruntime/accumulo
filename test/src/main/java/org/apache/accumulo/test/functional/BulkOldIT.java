@@ -110,7 +110,7 @@ public class BulkOldIT extends AccumuloClusterHarness {
     FileSKVWriter writer1 =
         FileOperations
             .getInstance().newWriterBuilder().forFile(dir + "/" + file + "." + RFile.EXTENSION, fs,
-                conf, CryptoServiceFactory.newDefaultInstance())
+                conf, CryptoServiceFactory.none())
             .withTableConfiguration(aconf).build();
     writer1.startDefaultLocalityGroup();
     for (int i = start; i <= end; i++) {

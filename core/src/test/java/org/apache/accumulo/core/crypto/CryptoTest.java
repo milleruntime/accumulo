@@ -109,8 +109,9 @@ public class CryptoTest {
     AccumuloConfiguration conf = getAccumuloConfig(CRYPTO_ON_CONF);
 
     CryptoService cs = new AESCryptoService();
-    cs.init(conf.getAllPropertiesWithPrefix(Property.INSTANCE_CRYPTO_PREFIX));
-    CryptoEnvironment encEnv = new CryptoEnvironmentImpl(Scope.RFILE, null);
+    var props = conf.getAllPropertiesWithPrefix(Property.GENERAL_CRYPTO_PREFIX);
+    cs.init(props);
+    CryptoEnvironment encEnv = new CryptoEnvironmentImpl(Scope.TABLE, props, null);
     FileEncrypter encrypter = cs.getFileEncrypter(encEnv);
     byte[] params = encrypter.getDecryptionParameters();
     assertNotNull(params);
@@ -134,7 +135,7 @@ public class CryptoTest {
 
     // decrypt
     ByteArrayInputStream in = new ByteArrayInputStream(cipherText);
-    FileDecrypter decrypter = getFileDecrypter(cs, Scope.RFILE, new DataInputStream(in));
+    FileDecrypter decrypter = getFileDecrypter(cs, Scope.TABLE, new DataInputStream(in), conf);
     DataInputStream decrypted = new DataInputStream(decrypter.decryptStream(in));
     String plainText = decrypted.readUTF();
     decrypted.close();
@@ -179,14 +180,14 @@ public class CryptoTest {
   @Test
   public void testAESCryptoServiceRFILE() throws Exception {
     AESCryptoService cs = new AESCryptoService();
-    byte[] resultingBytes = encrypt(cs, Scope.RFILE, CRYPTO_ON_CONF);
+    byte[] resultingBytes = encrypt(cs, Scope.TABLE, CRYPTO_ON_CONF);
 
     String stringifiedBytes = Arrays.toString(resultingBytes);
     String stringifiedMarkerBytes = getStringifiedBytes(null, MARKER_STRING, MARKER_INT);
 
     assertNotEquals(stringifiedBytes, stringifiedMarkerBytes);
 
-    decrypt(resultingBytes, Scope.RFILE, CRYPTO_ON_CONF);
+    decrypt(resultingBytes, Scope.TABLE, CRYPTO_ON_CONF);
   }
 
   /**
@@ -196,22 +197,22 @@ public class CryptoTest {
   public void testAESCryptoServiceRFILEDisabled() throws Exception {
     AESCryptoService cs = new AESCryptoService();
     // make sure we can read encrypted
-    byte[] encryptedBytes = encrypt(cs, Scope.RFILE, CRYPTO_ON_CONF);
+    byte[] encryptedBytes = encrypt(cs, Scope.TABLE, CRYPTO_ON_CONF);
     String stringEncryptedBytes = Arrays.toString(encryptedBytes);
     String stringifiedMarkerBytes = getStringifiedBytes(null, MARKER_STRING, MARKER_INT);
     assertNotEquals(stringEncryptedBytes, stringifiedMarkerBytes);
-    decrypt(encryptedBytes, Scope.RFILE, CRYPTO_ON_DISABLED_CONF);
+    decrypt(encryptedBytes, Scope.TABLE, CRYPTO_ON_DISABLED_CONF);
 
     // make sure we don't encrypt when disabled
-    byte[] plainBytes = encrypt(cs, Scope.RFILE, CRYPTO_ON_DISABLED_CONF);
+    byte[] plainBytes = encrypt(cs, Scope.TABLE, CRYPTO_ON_DISABLED_CONF);
     String stringPlainBytes = Arrays.toString(plainBytes);
     assertNotEquals(stringEncryptedBytes, stringPlainBytes);
-    decrypt(plainBytes, Scope.RFILE, CRYPTO_ON_DISABLED_CONF);
+    decrypt(plainBytes, Scope.TABLE, CRYPTO_ON_DISABLED_CONF);
   }
 
   @Test
   public void testNoEncryptionWAL() throws Exception {
-    CryptoService cs = CryptoServiceFactory.newDefaultInstance();
+    CryptoService cs = CryptoServiceFactory.none();
     byte[] encryptedBytes = encrypt(cs, Scope.WAL, CRYPTO_OFF_CONF);
 
     String stringifiedBytes = Arrays.toString(encryptedBytes);
@@ -225,8 +226,8 @@ public class CryptoTest {
 
   @Test
   public void testNoEncryptionRFILE() throws Exception {
-    CryptoService cs = CryptoServiceFactory.newDefaultInstance();
-    byte[] encryptedBytes = encrypt(cs, Scope.RFILE, CRYPTO_OFF_CONF);
+    CryptoService cs = CryptoServiceFactory.none();
+    byte[] encryptedBytes = encrypt(cs, Scope.TABLE, CRYPTO_OFF_CONF);
 
     String stringifiedBytes = Arrays.toString(encryptedBytes);
     String stringifiedMarkerBytes =
@@ -234,7 +235,7 @@ public class CryptoTest {
 
     assertEquals(stringifiedBytes, stringifiedMarkerBytes);
 
-    decrypt(encryptedBytes, Scope.RFILE, CRYPTO_OFF_CONF);
+    decrypt(encryptedBytes, Scope.TABLE, CRYPTO_OFF_CONF);
   }
 
   @Test
@@ -305,9 +306,9 @@ public class CryptoTest {
     for (Map.Entry<String,String> e : conf) {
       aconf.set(e.getKey(), e.getValue());
     }
-    aconf.set(Property.INSTANCE_CRYPTO_SERVICE,
+    aconf.set(Property.GENERAL_CRYPTO_SERVICE,
         "org.apache.accumulo.core.spi.crypto.AESCryptoService");
-    String configuredClass = aconf.get(Property.INSTANCE_CRYPTO_SERVICE.getKey());
+    String configuredClass = aconf.get(Property.GENERAL_CRYPTO_SERVICE.getKey());
     Class<? extends CryptoService> clazz =
         ClassLoaderUtil.loadClass(configuredClass, CryptoService.class);
     CryptoService cs = clazz.getDeclaredConstructor().newInstance();
@@ -399,7 +400,8 @@ public class CryptoTest {
   private <C extends CryptoService> byte[] encrypt(C cs, Scope scope, String configFile)
       throws Exception {
     AccumuloConfiguration conf = getAccumuloConfig(configFile);
-    cs.init(conf.getAllPropertiesWithPrefix(Property.INSTANCE_CRYPTO_PREFIX));
+    var props = conf.getAllPropertiesWithPrefix(Property.GENERAL_CRYPTO_PREFIX);
+    cs.init(props);
     CryptoEnvironmentImpl env = new CryptoEnvironmentImpl(scope, null);
     FileEncrypter encrypter = cs.getFileEncrypter(env);
     byte[] params = encrypter.getDecryptionParameters();
@@ -425,7 +427,7 @@ public class CryptoTest {
     try (DataInputStream dataIn = new DataInputStream(new ByteArrayInputStream(resultingBytes))) {
       AccumuloConfiguration conf = getAccumuloConfig(configFile);
       CryptoService cs = CryptoServiceFactory.newInstance(conf, ClassloaderType.JAVA);
-      FileDecrypter decrypter = getFileDecrypter(cs, scope, dataIn);
+      FileDecrypter decrypter = getFileDecrypter(cs, scope, dataIn, conf);
 
       try (DataInputStream decrypted = new DataInputStream(decrypter.decryptStream(dataIn))) {
         String markerString = decrypted.readUTF();

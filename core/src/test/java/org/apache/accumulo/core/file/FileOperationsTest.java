@@ -53,7 +53,7 @@ public class FileOperationsTest {
       FileSystem fs = FileSystem.getLocal(conf);
       AccumuloConfiguration acuconf = DefaultConfiguration.getInstance();
       writer = fileOperations.newWriterBuilder()
-          .forFile(filename, fs, conf, CryptoServiceFactory.newDefaultInstance())
+          .forFile(filename, fs, conf, CryptoServiceFactory.none())
           .withTableConfiguration(acuconf).build();
       writer.close();
     } catch (Exception ex) {

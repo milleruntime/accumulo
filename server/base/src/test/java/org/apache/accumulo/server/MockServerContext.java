@@ -38,7 +38,7 @@ public class MockServerContext {
     ConfigurationCopy conf = new ConfigurationCopy(DefaultConfiguration.getInstance());
     conf.set(Property.INSTANCE_VOLUMES, "file:///");
     expect(sc.getConfiguration()).andReturn(conf).anyTimes();
-    expect(sc.getCryptoService()).andReturn(CryptoServiceFactory.newDefaultInstance()).anyTimes();
+    expect(sc.getCryptoService()).andReturn(CryptoServiceFactory.none()).anyTimes();
     expect(sc.getProperties()).andReturn(new Properties()).anyTimes();
     return sc;
   }

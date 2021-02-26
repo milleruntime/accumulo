@@ -99,7 +99,7 @@ public class InMemoryMapTest {
   public static ServerContext getServerContext() {
     Configuration hadoopConf = new Configuration();
     ServerContext context = EasyMock.createMock(ServerContext.class);
-    EasyMock.expect(context.getCryptoService()).andReturn(CryptoServiceFactory.newDefaultInstance())
+    EasyMock.expect(context.getCryptoService()).andReturn(CryptoServiceFactory.none())
         .anyTimes();
     EasyMock.expect(context.getConfiguration()).andReturn(DefaultConfiguration.getInstance())
         .anyTimes();

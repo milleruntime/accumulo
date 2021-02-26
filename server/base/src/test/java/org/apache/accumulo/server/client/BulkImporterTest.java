@@ -116,7 +116,7 @@ public class BulkImporterTest {
     String file = "target/testFile.rf";
     fs.delete(new Path(file), true);
     FileSKVWriter writer = FileOperations.getInstance().newWriterBuilder()
-        .forFile(file, fs, fs.getConf(), CryptoServiceFactory.newDefaultInstance())
+        .forFile(file, fs, fs.getConf(), CryptoServiceFactory.none())
         .withTableConfiguration(context.getConfiguration()).build();
     writer.startDefaultLocalityGroup();
     Value empty = new Value(new byte[] {});

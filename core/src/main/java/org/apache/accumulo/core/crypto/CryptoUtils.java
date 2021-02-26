@@ -26,11 +26,19 @@ import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
 import java.util.Objects;
 
+import org.apache.accumulo.core.conf.AccumuloConfiguration;
+import org.apache.accumulo.core.conf.Property;
 import org.apache.accumulo.core.spi.crypto.CryptoEnvironment;
 import org.apache.accumulo.core.spi.crypto.CryptoService;
 import org.apache.accumulo.core.spi.crypto.CryptoService.CryptoException;
 import org.apache.accumulo.core.spi.crypto.FileDecrypter;
 import org.apache.commons.io.IOUtils;
+
+import static org.apache.accumulo.core.conf.Property.TABLE_CRYPTO_PREFIX;
+import static org.apache.accumulo.core.conf.Property.TABLE_CRYPTO_SERVICE;
+import static org.apache.accumulo.core.conf.Property.TSERV_WALOG_CRYPTO_PREFIX;
+import static org.apache.accumulo.core.conf.Property.TSERV_WALOG_CRYPTO_SERVICE;
+import static org.apache.accumulo.core.spi.crypto.CryptoEnvironment.Scope.TABLE;
 
 public class CryptoUtils {
 
@@ -68,7 +76,7 @@ public class CryptoUtils {
    * with the provided CryptoService and CryptoEnvironment.Scope.
    */
   public static FileDecrypter getFileDecrypter(CryptoService cs, CryptoEnvironment.Scope scope,
-      DataInputStream in) throws IOException {
+      DataInputStream in, AccumuloConfiguration conf) throws IOException {
     byte[] decryptionParams = readParams(in);
     CryptoEnvironment decEnv = new CryptoEnvironmentImpl(scope, decryptionParams);
     return cs.getFileDecrypter(decEnv);
@@ -82,6 +90,14 @@ public class CryptoUtils {
     Objects.requireNonNull(out);
     out.writeInt(decryptionParams.length);
     out.write(decryptionParams);
+  }
+
+  public static Property getPropPerScope(CryptoEnvironment.Scope scope) {
+    return (scope == TABLE ? TABLE_CRYPTO_SERVICE : TSERV_WALOG_CRYPTO_SERVICE);
+  }
+
+  public static Property getPrefixPerScope(CryptoEnvironment.Scope scope) {
+    return (scope == TABLE ? TABLE_CRYPTO_PREFIX : TSERV_WALOG_CRYPTO_PREFIX);
   }
 
 }

@@ -24,10 +24,13 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.accumulo.core.cli.ConfigOpts;
+import org.apache.accumulo.core.conf.Property;
 import org.apache.accumulo.core.conf.SiteConfiguration;
+import org.apache.accumulo.core.crypto.CryptoEnvironmentImpl;
 import org.apache.accumulo.core.crypto.CryptoServiceFactory;
 import org.apache.accumulo.core.crypto.CryptoServiceFactory.ClassloaderType;
 import org.apache.accumulo.core.file.rfile.bcfile.BCFile.MetaIndexEntry;
+import org.apache.accumulo.core.spi.crypto.CryptoEnvironment;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -39,7 +42,9 @@ public class PrintInfo {
   public static void printMetaBlockInfo(SiteConfiguration siteConfig, Configuration conf,
       FileSystem fs, Path path) throws IOException {
     FSDataInputStream fsin = fs.open(path);
-    try (BCFile.Reader bcfr = new BCFile.Reader(fsin, fs.getFileStatus(path).getLen(), conf,
+    var env = new CryptoEnvironmentImpl(CryptoEnvironment.Scope.TABLE,
+        siteConfig.getAllPropertiesWithPrefix(Property.GENERAL_CRYPTO_PREFIX), null);
+    try (BCFile.Reader bcfr = new BCFile.Reader(fsin, fs.getFileStatus(path).getLen(), conf, env,
         CryptoServiceFactory.newInstance(siteConfig, ClassloaderType.ACCUMULO))) {
 
       Set<Entry<String,MetaIndexEntry>> es = bcfr.metaIndex.index.entrySet();

@@ -38,6 +38,7 @@ import org.apache.accumulo.core.file.rfile.RFile.Reader;
 import org.apache.accumulo.core.file.rfile.bcfile.MetaBlockDoesNotExist;
 import org.apache.accumulo.core.spi.cache.BlockCache;
 import org.apache.accumulo.core.spi.cache.CacheEntry;
+import org.apache.accumulo.core.spi.crypto.CryptoEnvironment;
 import org.apache.accumulo.core.spi.crypto.CryptoService;
 import org.apache.accumulo.core.summary.Gatherer.RowRange;
 import org.apache.hadoop.conf.Configuration;
@@ -176,15 +177,16 @@ public class SummaryReader {
 
   public static SummaryReader load(Configuration conf, InputStream inputStream, long length,
       Predicate<SummarizerConfiguration> summarySelector, SummarizerFactory factory,
-      CryptoService cryptoService) throws IOException {
+      CryptoEnvironment env, CryptoService cryptoService) throws IOException {
     CachableBuilder cb = new CachableBuilder().input(inputStream).length(length).conf(conf)
-        .cryptoService(cryptoService);
+        .cryptoService(env, cryptoService);
     return load(new CachableBlockFile.Reader(cb), summarySelector, factory);
   }
 
   public static SummaryReader load(FileSystem fs, Configuration conf, SummarizerFactory factory,
       Path file, Predicate<SummarizerConfiguration> summarySelector, BlockCache summaryCache,
-      BlockCache indexCache, Cache<String,Long> fileLenCache, CryptoService cryptoService) {
+      BlockCache indexCache, Cache<String,Long> fileLenCache, CryptoEnvironment env,
+      CryptoService cryptoService) {
     CachableBlockFile.Reader bcReader = null;
 
     try {
@@ -192,7 +194,8 @@ public class SummaryReader {
       // only summary data is wanted.
       CompositeCache compositeCache = new CompositeCache(summaryCache, indexCache);
       CachableBuilder cb = new CachableBuilder().fsPath(fs, file).conf(conf).fileLen(fileLenCache)
-          .cacheProvider(new BasicCacheProvider(compositeCache, null)).cryptoService(cryptoService);
+          .cacheProvider(new BasicCacheProvider(compositeCache, null))
+          .cryptoService(env, cryptoService);
       bcReader = new CachableBlockFile.Reader(cb);
       return load(bcReader, summarySelector, factory);
     } catch (FileNotFoundException fne) {

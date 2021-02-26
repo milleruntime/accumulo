@@ -164,20 +164,6 @@ public enum Property {
       PropertyType.STRING,
       "One-line configuration property controlling the network locations "
           + "(hostnames) that are allowed to impersonate other users"),
-  // Crypto-related properties
-  @Experimental
-  INSTANCE_CRYPTO_PREFIX("instance.crypto.opts.", null, PropertyType.PREFIX,
-      "Properties related to on-disk file encryption."),
-  @Experimental
-  @Sensitive
-  INSTANCE_CRYPTO_SENSITIVE_PREFIX("instance.crypto.opts.sensitive.", null, PropertyType.PREFIX,
-      "Sensitive properties related to on-disk file encryption."),
-  @Experimental
-  INSTANCE_CRYPTO_SERVICE("instance.crypto.service",
-      "org.apache.accumulo.core.spi.crypto.NoCryptoService", PropertyType.CLASSNAME,
-      "The class which executes on-disk file encryption. The default does nothing. To enable "
-          + "encryption, replace this classname with an implementation of the"
-          + "org.apache.accumulo.core.spi.crypto.CryptoService interface."),
 
   // general properties
   GENERAL_PREFIX("general.", null, PropertyType.PREFIX,
@@ -243,7 +229,6 @@ public enum Property {
   GENERAL_MAX_SCANNER_RETRY_PERIOD("general.max.scanner.retry.period", "5s",
       PropertyType.TIMEDURATION,
       "The maximum amount of time that a Scanner should wait before retrying a failed RPC"),
-
   // properties that are specific to manager server behavior
   MANAGER_PREFIX("manager.", null, PropertyType.PREFIX,
       "Properties in this category affect the behavior of the manager server."),
@@ -382,6 +367,20 @@ public enum Property {
   TSERV_WALOG_TOLERATED_MAXIMUM_WAIT_DURATION("tserver.walog.maximum.wait.duration", "5m",
       PropertyType.TIMEDURATION,
       "The maximum amount of time to wait after a failure to create or write a write-ahead log."),
+  // Crypto-related properties
+  @Experimental
+  TSERV_WALOG_CRYPTO_PREFIX("tserver.walog.crypto.opts.", null, PropertyType.PREFIX,
+      "Properties related to on-disk file encryption."),
+  @Experimental
+  @Sensitive
+  TSERV_WALOG_CRYPTO_SENSITIVE_PREFIX("tserver.walog.crypto.opts.sensitive.", null,
+      PropertyType.PREFIX, "Sensitive properties related to on-disk file encryption."),
+  @Experimental
+  TSERV_WALOG_CRYPTO_SERVICE("tserver.walog.crypto.service",
+      "org.apache.accumulo.core.spi.crypto.NoCryptoService", PropertyType.CLASSNAME,
+      "The class which executes on-disk write ahead log encryption/decryption. The default does " +
+              "nothing. This property must be a classname with an implementation of the "
+          + "org.apache.accumulo.core.spi.crypto.CryptoService interface."),
   TSERV_SCAN_MAX_OPENFILES("tserver.scan.files.open.max", "100", PropertyType.COUNT,
       "Maximum total RFiles that all tablets in a tablet server can open for scans. "),
   TSERV_MAX_IDLE("tserver.files.open.idle", "1m", PropertyType.TIMEDURATION,
@@ -749,6 +748,20 @@ public enum Property {
   TABLE_COMPACTION_STRATEGY_PREFIX("table.majc.compaction.strategy.opts.", null,
       PropertyType.PREFIX,
       "Properties in this category are used to configure the compaction strategy."),
+  // Crypto-related properties
+  @Experimental
+  TABLE_CRYPTO_PREFIX("table.crypto.opts.", null, PropertyType.PREFIX,
+      "Properties related to on-disk file encryption."),
+  @Experimental
+  @Sensitive
+  TABLE_CRYPTO_SENSITIVE_PREFIX("table.crypto.opts.sensitive.", null, PropertyType.PREFIX,
+      "Sensitive properties related to on-disk file encryption."),
+  @Experimental
+  TABLE_CRYPTO_SERVICE("table.crypto.service",
+      "org.apache.accumulo.core.spi.crypto.NoCryptoService", PropertyType.CLASSNAME,
+          "The class which executes on-disk table encryption/decryption. The default does " +
+                  "nothing. This property must be a classname with an implementation of the "
+                  + "org.apache.accumulo.core.spi.crypto.CryptoService interface."),
   TABLE_SCAN_DISPATCHER("table.scan.dispatcher", SimpleScanDispatcher.class.getName(),
       PropertyType.CLASSNAME,
       "This class is used to dynamically dispatch scans to configured scan executors.  Configured "

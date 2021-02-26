@@ -18,6 +18,11 @@
  */
 package org.apache.accumulo.core.spi.crypto;
 
+import org.apache.accumulo.core.data.TableId;
+
+import java.util.Map;
+import java.util.Optional;
+
 /**
  * Useful information provided to the crypto implementation
  *
@@ -28,10 +33,23 @@ public interface CryptoEnvironment {
    * Where in Accumulo the on-disk file encryption takes place.
    */
   enum Scope {
-    WAL, RFILE
+    WAL, TABLE
   }
 
   Scope getScope();
 
-  byte[] getDecryptionParams();
+  Optional<byte[]> getDecryptionParams();
+
+  /**
+   * Return table configuration. I don't think we need this. conf gets passed in to init
+   *
+   * @since 2.1
+   */
+  default Map<String,String> getConfig() {
+    throw new UnsupportedOperationException();
+  }
+
+  default TableId getTableId() {
+    throw new UnsupportedOperationException();
+  }
 }

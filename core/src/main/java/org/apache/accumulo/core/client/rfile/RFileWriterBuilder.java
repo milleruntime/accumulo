@@ -35,10 +35,12 @@ import org.apache.accumulo.core.client.summary.SummarizerConfiguration;
 import org.apache.accumulo.core.conf.AccumuloConfiguration;
 import org.apache.accumulo.core.conf.ConfigurationCopy;
 import org.apache.accumulo.core.conf.DefaultConfiguration;
+import org.apache.accumulo.core.crypto.CryptoEnvironmentImpl;
 import org.apache.accumulo.core.crypto.CryptoServiceFactory;
 import org.apache.accumulo.core.crypto.CryptoServiceFactory.ClassloaderType;
 import org.apache.accumulo.core.file.FileOperations;
 import org.apache.accumulo.core.sample.impl.SamplerConfigurationImpl;
+import org.apache.accumulo.core.spi.crypto.CryptoEnvironment;
 import org.apache.accumulo.core.spi.crypto.CryptoService;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -103,6 +105,10 @@ class RFileWriterBuilder implements RFile.OutputArguments, RFile.WriterFSOptions
 
     CryptoService cs = CryptoServiceFactory.newInstance(acuconf, ClassloaderType.JAVA);
 
+    //TODO How do we get the table name???
+    CryptoEnvironment env =
+        new CryptoEnvironmentImpl(CryptoEnvironment.Scope.TABLE, tableConfig, null);
+
     if (out.getOutputStream() != null) {
       FSDataOutputStream fsdo;
       if (out.getOutputStream() instanceof FSDataOutputStream) {
@@ -111,12 +117,12 @@ class RFileWriterBuilder implements RFile.OutputArguments, RFile.WriterFSOptions
         fsdo = new FSDataOutputStream(out.getOutputStream(), new FileSystem.Statistics("foo"));
       }
       return new RFileWriter(
-          fileops.newWriterBuilder().forOutputStream(".rf", fsdo, out.getConf(), cs)
+          fileops.newWriterBuilder().forOutputStream(".rf", fsdo, out.getConf(), cs, env)
               .withTableConfiguration(acuconf).withStartDisabled().build(),
           visCacheSize);
     } else {
       return new RFileWriter(fileops.newWriterBuilder()
-          .forFile(out.path.toString(), out.getFileSystem(), out.getConf(), cs)
+          .forFile(out.path.toString(), out.getFileSystem(), out.getConf(), cs, env)
           .withTableConfiguration(acuconf).withStartDisabled().build(), visCacheSize);
     }
   }

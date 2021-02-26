@@ -104,7 +104,7 @@ public class InMemoryMapIT {
 
   public static ServerContext getServerContext() {
     ServerContext context = EasyMock.createMock(ServerContext.class);
-    EasyMock.expect(context.getCryptoService()).andReturn(CryptoServiceFactory.newDefaultInstance())
+    EasyMock.expect(context.getCryptoService()).andReturn(CryptoServiceFactory.none())
         .anyTimes();
     EasyMock.replay(context);
     return context;
