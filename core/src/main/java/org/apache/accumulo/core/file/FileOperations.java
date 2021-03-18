@@ -21,8 +21,10 @@ package org.apache.accumulo.core.file;
 import static org.apache.accumulo.core.file.blockfile.impl.CacheProvider.NULL_PROVIDER;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -39,10 +41,13 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.mapred.FileOutputCommitter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.cache.Cache;
 
 public abstract class FileOperations {
+  private static Logger log = LoggerFactory.getLogger(FileOperations.class);
 
   private static final String HADOOP_JOBHISTORY_LOCATION = "_logs"; // dir related to
                                                                     // hadoop.job.history.user.location
@@ -180,7 +185,7 @@ public abstract class FileOperations {
     public final CacheProvider cacheProvider;
     public final Cache<String,Long> fileLenCache;
     public final boolean seekToBeginning;
-    public final CryptoService cryptoService;
+    public final List<CryptoService> decrypters;
     // scan reader only objects
     public final Range range;
     public final Set<ByteSequence> columnFamilies;
@@ -189,7 +194,7 @@ public abstract class FileOperations {
     public FileOptions(AccumuloConfiguration tableConfiguration, String filename, FileSystem fs,
         Configuration fsConf, RateLimiter rateLimiter, String compression,
         FSDataOutputStream outputStream, boolean enableAccumuloStart, CacheProvider cacheProvider,
-        Cache<String,Long> fileLenCache, boolean seekToBeginning, CryptoService cryptoService,
+        Cache<String,Long> fileLenCache, boolean seekToBeginning, List<CryptoService> decrypters,
         Range range, Set<ByteSequence> columnFamilies, boolean inclusive) {
       this.tableConfiguration = tableConfiguration;
       this.filename = filename;
@@ -202,7 +207,7 @@ public abstract class FileOperations {
       this.cacheProvider = cacheProvider;
       this.fileLenCache = fileLenCache;
       this.seekToBeginning = seekToBeginning;
-      this.cryptoService = Objects.requireNonNull(cryptoService);
+      this.decrypters = decrypters;
       this.range = range;
       this.columnFamilies = columnFamilies;
       this.inclusive = inclusive;
@@ -252,10 +257,6 @@ public abstract class FileOperations {
       return seekToBeginning;
     }
 
-    public CryptoService getCryptoService() {
-      return cryptoService;
-    }
-
     public Range getRange() {
       return range;
     }
@@ -278,7 +279,7 @@ public abstract class FileOperations {
     private FileSystem fs;
     private Configuration fsConf;
     private RateLimiter rateLimiter;
-    private CryptoService cryptoService;
+    private List<CryptoService> decrypt = new ArrayList<>();
 
     protected FileHelper fs(FileSystem fs) {
       this.fs = Objects.requireNonNull(fs);
@@ -305,33 +306,33 @@ public abstract class FileOperations {
       return this;
     }
 
-    protected FileHelper cryptoService(CryptoService cs) {
-      this.cryptoService = Objects.requireNonNull(cs);
+    protected FileHelper decrypters(List<CryptoService> decrypters) {
+      this.decrypt = Objects.requireNonNull(decrypters);
       return this;
     }
 
     protected FileOptions toWriterBuilderOptions(String compression,
         FSDataOutputStream outputStream, boolean startEnabled) {
       return new FileOptions(tableConfiguration, filename, fs, fsConf, rateLimiter, compression,
-          outputStream, startEnabled, NULL_PROVIDER, null, false, cryptoService, null, null, true);
+          outputStream, startEnabled, NULL_PROVIDER, null, false, decrypt, null, null, true);
     }
 
     protected FileOptions toReaderBuilderOptions(CacheProvider cacheProvider,
         Cache<String,Long> fileLenCache, boolean seekToBeginning) {
       return new FileOptions(tableConfiguration, filename, fs, fsConf, rateLimiter, null, null,
           false, cacheProvider == null ? NULL_PROVIDER : cacheProvider, fileLenCache,
-          seekToBeginning, cryptoService, null, null, true);
+          seekToBeginning, decrypt, null, null, true);
     }
 
     protected FileOptions toIndexReaderBuilderOptions(Cache<String,Long> fileLenCache) {
       return new FileOptions(tableConfiguration, filename, fs, fsConf, rateLimiter, null, null,
-          false, NULL_PROVIDER, fileLenCache, false, cryptoService, null, null, true);
+          false, NULL_PROVIDER, fileLenCache, false, decrypt, null, null, true);
     }
 
     protected FileOptions toScanReaderBuilderOptions(Range range, Set<ByteSequence> columnFamilies,
         boolean inclusive) {
       return new FileOptions(tableConfiguration, filename, fs, fsConf, rateLimiter, null, null,
-          false, NULL_PROVIDER, null, false, cryptoService, range, columnFamilies, inclusive);
+          false, NULL_PROVIDER, null, false, decrypt, range, columnFamilies, inclusive);
     }
 
     protected AccumuloConfiguration getTableConfiguration() {
@@ -348,15 +349,14 @@ public abstract class FileOperations {
     private boolean enableAccumuloStart = true;
 
     public WriterTableConfiguration forOutputStream(String extension,
-        FSDataOutputStream outputStream, Configuration fsConf, CryptoService cs) {
+        FSDataOutputStream outputStream, Configuration fsConf) {
       this.outputStream = outputStream;
-      filename("foo" + extension).fsConf(fsConf).cryptoService(cs);
+      filename("foo" + extension).fsConf(fsConf);
       return this;
     }
 
-    public WriterTableConfiguration forFile(String filename, FileSystem fs, Configuration fsConf,
-        CryptoService cs) {
-      filename(filename).fs(fs).fsConf(fsConf).cryptoService(cs);
+    public WriterTableConfiguration forFile(String filename, FileSystem fs, Configuration fsConf) {
+      filename(filename).fs(fs).fsConf(fsConf);
       return this;
     }
 
@@ -398,9 +398,8 @@ public abstract class FileOperations {
     private Cache<String,Long> fileLenCache;
     private boolean seekToBeginning = false;
 
-    public ReaderTableConfiguration forFile(String filename, FileSystem fs, Configuration fsConf,
-        CryptoService cs) {
-      filename(filename).fs(fs).fsConf(fsConf).cryptoService(cs);
+    public ReaderTableConfiguration forFile(String filename, FileSystem fs, Configuration fsConf) {
+      filename(filename).fs(fs).fsConf(fsConf);
       return this;
     }
 
@@ -426,6 +425,11 @@ public abstract class FileOperations {
 
     public ReaderBuilder withRateLimiter(RateLimiter rateLimiter) {
       rateLimiter(rateLimiter);
+      return this;
+    }
+
+    public ReaderBuilder decrypt(List<CryptoService> decrypters) {
+      decrypters(decrypters);
       return this;
     }
 
@@ -462,8 +466,8 @@ public abstract class FileOperations {
     private Cache<String,Long> fileLenCache = null;
 
     public IndexReaderTableConfiguration forFile(String filename, FileSystem fs,
-        Configuration fsConf, CryptoService cs) {
-      filename(filename).fs(fs).fsConf(fsConf).cryptoService(cs);
+        Configuration fsConf) {
+      filename(filename).fs(fs).fsConf(fsConf);
       return this;
     }
 
@@ -475,6 +479,11 @@ public abstract class FileOperations {
 
     public IndexReaderBuilder withFileLenCache(Cache<String,Long> fileLenCache) {
       this.fileLenCache = fileLenCache;
+      return this;
+    }
+
+    public IndexReaderBuilder decrypt(List<CryptoService> decrypters) {
+      decrypters(decrypters);
       return this;
     }
 
@@ -494,14 +503,19 @@ public abstract class FileOperations {
     private boolean inclusive;
 
     public ScanReaderTableConfiguration forFile(String filename, FileSystem fs,
-        Configuration fsConf, CryptoService cs) {
-      filename(filename).fs(fs).fsConf(fsConf).cryptoService(cs);
+        Configuration fsConf) {
+      filename(filename).fs(fs).fsConf(fsConf);
       return this;
     }
 
     @Override
     public ScanReaderBuilder withTableConfiguration(AccumuloConfiguration tableConfiguration) {
       tableConfiguration(tableConfiguration);
+      return this;
+    }
+
+    public ScanReaderBuilder decrypt(List<CryptoService> decrypters) {
+      decrypters(decrypters);
       return this;
     }
 
