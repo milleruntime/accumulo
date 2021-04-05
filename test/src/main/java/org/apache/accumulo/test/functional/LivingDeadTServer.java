@@ -22,6 +22,7 @@ import org.apache.accumulo.server.client.HdfsZooInstance;
 import org.apache.accumulo.server.conf.ServerConfigurationFactory;
 import org.apache.accumulo.server.fs.FileRef;
 import org.apache.accumulo.server.fs.VolumeManager;
+import org.apache.accumulo.server.fs.VolumeManagerImpl;
 import org.apache.accumulo.server.master.tableOps.UserCompactionConfig;
 import org.apache.accumulo.server.rpc.ServerAddress;
 import org.apache.accumulo.server.rpc.TServerUtils;
@@ -35,6 +36,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.thrift.TException;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.OpResult;
+import org.bouncycastle.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,10 +56,12 @@ import static org.apache.accumulo.fate.util.UtilWaitThread.sleepUninterruptibly;
 public class LivingDeadTServer extends TabletServer {
 
     private final ThriftClientHandler tch;
+    AccumuloServerContext context;
 
     public LivingDeadTServer(AccumuloServerContext context, TransactionWatcher watcher,
                              ServerConfigurationFactory confFactory, VolumeManager fs) throws IOException {
         super(confFactory, fs);
+        this.context = context;
         this.tch = new ThriftClientHandler(context, watcher);
     }
 
@@ -78,6 +83,7 @@ public class LivingDeadTServer extends TabletServer {
 
         @Override
         synchronized public void fastHalt(TInfo tinfo, TCredentials credentials, String lock) {
+            log.error("DUDE calling fastHalt");
             halted = true;
             notifyAll();
         }
@@ -85,95 +91,51 @@ public class LivingDeadTServer extends TabletServer {
         @Override
         public TabletServerStatus getTabletServerStatus(TInfo tinfo, TCredentials credentials)
                 throws ThriftSecurityException, TException {
+            log.info("DUDE got status");
+
             synchronized (this) {
-                if (statusCount++ < 1) {
+                //if (statusCount++ < 1) {
                     TabletServerStatus result = new TabletServerStatus();
                     result.tableMap = new HashMap<>();
                     return result;
-                }
+               // }
             }
-            sleepUninterruptibly(Integer.MAX_VALUE, TimeUnit.DAYS);
-            return null;
+            //sleepUninterruptibly(Integer.MAX_VALUE, TimeUnit.DAYS);
+            //return null;
         }
 
         @Override
         synchronized public void halt(TInfo tinfo, TCredentials credentials, String lock)
                 throws ThriftSecurityException, TException {
+            log.error("DUDE calling halt");
             halted = true;
             notifyAll();
         }
 
         @Override
         public void compact(TInfo tinfo, TCredentials credentials, String lock, String tableId, ByteBuffer startRow, ByteBuffer endRow) throws TException {
-            KeyExtent ke =
-                    new KeyExtent(tableId, ByteBufferUtil.toText(endRow), ByteBufferUtil.toText(startRow));
-            log.info("LivingDead Compacting tablet " + ke);
-
-            ArrayList<Tablet> tabletsToCompact = new ArrayList<>();
-                for (Tablet tablet : getOnlineTablets()) {
-                    if (ke.overlaps(tablet.getExtent()))
-                        tabletsToCompact.add(tablet);
-                }
-            Pair<Long, UserCompactionConfig> compactionInfo = null;
-            for (Tablet tablet : tabletsToCompact) {
-                // all for the same table id, so only need to read
-                // compaction id once
-                if (compactionInfo == null)
-                    try {
-                        compactionInfo = tablet.getCompactionID();
-                    } catch (KeeperException.NoNodeException e) {
-                        log.info("Asked to compact table with no compaction id {} {}", ke, e.getMessage());
-                        return;
-                    }
-                tablet.compactAll(compactionInfo.getFirst(), compactionInfo.getSecond());
-            }
-
-            //TODO set condition for compacting the test tablet
             doneCompacting = true;
+
+            KeeperException k = KeeperException.create(KeeperException.Code.CONNECTIONLOSS, "/compact");
+            throw new RuntimeException(k);
         }
 
         @Override
         public void loadTablet(TInfo tinfo, TCredentials credentials, String lock, TKeyExtent textent) throws TException {
             final KeyExtent extent = new KeyExtent(textent);
             log.info("LivingDead Loading tablet " + extent);
-            AssignmentHandler ah = new AssignmentHandler(extent);
-            ah.run();
+            KeeperException k = KeeperException.create(KeeperException.Code.CONNECTIONLOSS, "/loadtablet");
+            throw new RuntimeException(k);
 
-            log.info("LivingDead now has {} online tablets.", getOnlineTablets().size());
+            //log.info("LivingDead now has {} online tablets.", getOnlineTablets().size());
         }
 
         @Override
         public List<TKeyExtent> bulkImport(TInfo tinfo, TCredentials credentials, long tid, Map<TKeyExtent, Map<String, MapFileInfo>> files, boolean setTime) {
             log.info("LivingDead bulk importing " + files);
 
-            List<TKeyExtent> failures = new ArrayList<>();
-
-            for (Map.Entry<TKeyExtent,Map<String,MapFileInfo>> entry : files.entrySet()) {
-                TKeyExtent tke = entry.getKey();
-                Map<String,MapFileInfo> fileMap = entry.getValue();
-                Map<FileRef,MapFileInfo> fileRefMap = new HashMap<>();
-                for (Map.Entry<String,MapFileInfo> mapping : fileMap.entrySet()) {
-                    Path path = new Path(mapping.getKey());
-                    FileSystem ns = getFileSystem().getVolumeByPath(path).getFileSystem();
-                    path = ns.makeQualified(path);
-                    fileRefMap.put(new FileRef(path.toString(), path), mapping.getValue());
-                }
-
-                Tablet importTablet = getOnlineTablet(new KeyExtent(tke));
-
-                if (importTablet == null) {
-                    failures.add(tke);
-                } else {
-                    try {
-                        importTablet.importMapFiles(tid, fileRefMap, setTime);
-                    } catch (IOException ioe) {
-                        log.info("files {} not imported to {}: {}", fileMap.keySet(), new KeyExtent(tke),
-                                ioe.getMessage());
-                        failures.add(tke);
-                    }
-                }
-            }
-            return failures;
+            KeeperException k = KeeperException.create(KeeperException.Code.CONNECTIONLOSS, "/bulkimport");
+            throw new RuntimeException(k);
         }
     }
 
@@ -187,7 +149,7 @@ public class LivingDeadTServer extends TabletServer {
             AccumuloServerContext context = new AccumuloServerContext(scf);
 
             TransactionWatcher watcher = new TransactionWatcher();
-            LivingDeadTServer z = new LivingDeadTServer(context, watcher, scf, null);
+            LivingDeadTServer z = new LivingDeadTServer(context, watcher, scf, VolumeManagerImpl.get(context.getConfiguration()));
             final ThriftClientHandler tch = z.getTch();
             Processor<Iface> processor = new Processor<>(tch);
             ServerAddress serverPort = TServerUtils.startTServer(context.getConfiguration(),
@@ -196,6 +158,8 @@ public class LivingDeadTServer extends TabletServer {
 
             String addressString = serverPort.address.toString();
             log.info("Starting LivingDeadTServer at " + addressString);
+            z.config(serverPort.address.getHost());
+
             String zPath =
                     ZooUtil.getRoot(context.getInstance()) + Constants.ZTSERVERS + "/" + addressString;
             ZooReaderWriter zoo = ZooReaderWriter.getInstance();
@@ -207,6 +171,7 @@ public class LivingDeadTServer extends TabletServer {
                 @Override
                 public void lostLock(final org.apache.accumulo.fate.zookeeper.ZooLock.LockLossReason reason) {
                     try {
+                        log.info("DUDE lostLock");
                         tch.halt(Tracer.traceInfo(), null, null);
                     } catch (Exception ex) {
                         log.error("Exception", ex);
@@ -217,6 +182,7 @@ public class LivingDeadTServer extends TabletServer {
                 @Override
                 public void unableToMonitorLockNode(Throwable e) {
                     try {
+                        log.info("DUDE unableToMonitorLockNode");
                         tch.halt(Tracer.traceInfo(), null, null);
                     } catch (Exception ex) {
                         log.error("Exception", ex);
