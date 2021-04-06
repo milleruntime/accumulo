@@ -81,7 +81,7 @@ public class FunctionalTestUtils {
     }
   }
 
-  static void checkRFiles(AccumuloClient c, String tableName, int minTablets, int maxTablets,
+  public static void checkRFiles(AccumuloClient c, String tableName, int minTablets, int maxTablets,
       int minRFiles, int maxRFiles) throws Exception {
     try (Scanner scanner = c.createScanner(MetadataTable.NAME, Authorizations.EMPTY)) {
       String tableId = c.tableOperations().tableIdMap().get(tableName);
