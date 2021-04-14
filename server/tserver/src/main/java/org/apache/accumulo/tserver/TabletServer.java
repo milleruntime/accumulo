@@ -235,7 +235,7 @@ public class TabletServer extends AbstractServer {
     }
   }
 
-  TabletServer(ServerOpts opts, String[] args) {
+  protected TabletServer(ServerOpts opts, String[] args) {
     super("tserver", opts, args);
     ServerContext context = super.getContext();
     context.setupCrypto();

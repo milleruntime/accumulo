@@ -164,6 +164,7 @@ public class LiveTServerSet implements Watcher {
       TabletClientService.Client client =
           ThriftUtil.getClient(new TabletClientService.Client.Factory(), address, context);
       try {
+        log.info("DUDE call flush for " + tableId);
         client.flush(TraceUtil.traceInfo(), context.rpcCreds(), lockString(lock),
             tableId.canonical(), startRow == null ? null : ByteBuffer.wrap(startRow),
             endRow == null ? null : ByteBuffer.wrap(endRow));

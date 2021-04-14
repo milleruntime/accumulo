@@ -953,6 +953,7 @@ public class TableOperationsImpl extends TableOperationsHelper {
         ManagerClientService.Iface client = null;
         try {
           client = ManagerClient.getConnectionWithRetry(context);
+          log.info("DUDE calling waitForFlush from:", new Exception("Mike"));
           client.waitForFlush(TraceUtil.traceInfo(), context.rpcCreds(), tableId.canonical(),
               TextUtil.getByteBuffer(start), TextUtil.getByteBuffer(end), flushID,
               wait ? Long.MAX_VALUE : 1);

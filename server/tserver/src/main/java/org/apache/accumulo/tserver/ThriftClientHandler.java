@@ -1513,6 +1513,9 @@ class ThriftClientHandler extends ClientServiceHandler implements TabletClientSe
           // table was probably deleted
           log.info("Asked to flush table that has no flush id {} {}", ke, e.getMessage());
           return;
+        } catch (Exception ex) {
+          log.error("DUDE I guess retry?", ex);
+          throw ex;
         }
       }
       tablet.flush(flushID);

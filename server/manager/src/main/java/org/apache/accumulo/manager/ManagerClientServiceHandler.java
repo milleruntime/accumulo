@@ -163,9 +163,11 @@ public class ManagerClientServiceHandler extends FateServiceHandler
       for (TServerInstance instance : serversToFlush) {
         try {
           final TServerConnection server = manager.tserverSet.getConnection(instance);
-          if (server != null)
+          if (server != null) {
+            log.info("DUDE in maxLoop on {}/{} waitForLush for {}",l, maxLoops, tableId);
             server.flush(manager.managerLock, tableId, ByteBufferUtil.toBytes(startRowBB),
-                ByteBufferUtil.toBytes(endRowBB));
+                    ByteBufferUtil.toBytes(endRowBB));
+          }
         } catch (TException ex) {
           Manager.log.error(ex.toString());
         }
