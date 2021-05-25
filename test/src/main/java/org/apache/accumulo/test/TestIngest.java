@@ -131,7 +131,7 @@ public class TestIngest {
   }
 
   public static TreeSet<Text> getSplitPoints(long start, long end, long numsplits) {
-    long splitSize = (end - start) / numsplits;
+    long splitSize = Math.max((end - start) / numsplits, 1);
 
     long pos = start + splitSize;
 
