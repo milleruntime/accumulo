@@ -136,6 +136,7 @@ public class GarbageCollectionAlgorithm {
   private void confirmDeletes(GarbageCollectionEnvironment gce,
       SortedMap<String,String> candidateMap)
       throws TableNotFoundException, AccumuloException, AccumuloSecurityException {
+    log.debug("CONFIRM deletes: " + candidateMap);
     boolean checkForBulkProcessingFiles = false;
     Iterator<String> relativePaths = candidateMap.keySet().iterator();
     while (!checkForBulkProcessingFiles && relativePaths.hasNext())
@@ -173,7 +174,9 @@ public class GarbageCollectionAlgorithm {
     }
 
     Iterator<Entry<Key,Value>> iter = gce.getReferenceIterator();
+    int count = 0;
     while (iter.hasNext()) {
+      count++;
       Entry<Key,Value> entry = iter.next();
       Key key = entry.getKey();
       Text cft = key.getColumnFamily();
@@ -182,6 +185,7 @@ public class GarbageCollectionAlgorithm {
         String cq = key.getColumnQualifier().toString();
 
         String reference = cq;
+        log.debug("DUDE looking at reference: " + reference);
         if (cq.startsWith("/")) {
           String tableID = new String(KeyExtent.tableOfMetadataRow(key.getRow()));
           reference = "/" + tableID + cq;
@@ -190,6 +194,7 @@ public class GarbageCollectionAlgorithm {
         }
 
         reference = makeRelative(reference, 3);
+        log.debug("DUDE after makeRelative: {} map size = {}", reference, candidateMap.size());
 
         // WARNING: This line is EXTREMELY IMPORTANT.
         // You MUST REMOVE candidates that are still in use
@@ -217,6 +222,7 @@ public class GarbageCollectionAlgorithm {
         throw new RuntimeException(
             "Scanner over metadata table returned unexpected column : " + entry.getKey());
     }
+    log.debug("DUDE GC done confirmDeletes. Checked {}", count);
 
     confirmDeletesFromReplication(gce.getReplicationNeededIterator(),
         candidateMap.entrySet().iterator());

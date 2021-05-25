@@ -21,6 +21,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.accumulo.fate.util.UtilWaitThread.sleepUninterruptibly;
 
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.accumulo.core.client.AccumuloException;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
@@ -29,6 +30,7 @@ import org.apache.accumulo.core.client.impl.TabletLocator.TabletLocation;
 import org.apache.accumulo.core.client.impl.thrift.ThriftSecurityException;
 import org.apache.accumulo.core.data.Mutation;
 import org.apache.accumulo.core.data.impl.KeyExtent;
+import org.apache.accumulo.core.metadata.MetadataTable;
 import org.apache.accumulo.core.rpc.ThriftUtil;
 import org.apache.accumulo.core.tabletserver.thrift.ConstraintViolationException;
 import org.apache.accumulo.core.tabletserver.thrift.NotServingTabletException;
@@ -80,6 +82,16 @@ public class Writer {
   public void update(Mutation m) throws AccumuloException, AccumuloSecurityException,
       ConstraintViolationException, TableNotFoundException {
     checkArgument(m != null, "m is null");
+    if (tableId.equals(MetadataTable.ID)) {
+      log.info("DUDEMD for {} with updates: {}", new Text(m.getRow()),
+          m.getUpdates().stream().map(cu -> {
+            String ret =
+                "cf:" + new Text(cu.getColumnFamily()) + " cq:" + new Text(cu.getColumnQualifier());
+            if (cu.isDeleted())
+              ret += "=DEL";
+            return ret;
+          }).collect(Collectors.toList()));
+    }
 
     if (m.size() == 0)
       throw new IllegalArgumentException("Can not add empty mutations");

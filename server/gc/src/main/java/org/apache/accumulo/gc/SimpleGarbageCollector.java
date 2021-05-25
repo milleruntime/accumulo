@@ -295,6 +295,7 @@ public class SimpleGarbageCollector extends AccumuloServerContext implements Ifa
       for (Entry<Key,Value> entry : scanner) {
         String cand = entry.getKey().getRow().toString()
             .substring(MetadataSchema.DeletesSection.getRowPrefix().length());
+        log.debug("DUDE adding candidate: " + cand);
         result.add(cand);
         if (almostOutOfMemory(Runtime.getRuntime())) {
           log.info("List of delete candidates has exceeded the memory"
