@@ -185,7 +185,6 @@ public class GarbageCollectionAlgorithm {
         String cq = key.getColumnQualifier().toString();
 
         String reference = cq;
-        log.debug("DUDE looking at reference: " + reference);
         if (cq.startsWith("/")) {
           String tableID = new String(KeyExtent.tableOfMetadataRow(key.getRow()));
           reference = "/" + tableID + cq;
@@ -194,7 +193,6 @@ public class GarbageCollectionAlgorithm {
         }
 
         reference = makeRelative(reference, 3);
-        log.debug("DUDE after makeRelative: {} map size = {}", reference, candidateMap.size());
 
         // WARNING: This line is EXTREMELY IMPORTANT.
         // You MUST REMOVE candidates that are still in use

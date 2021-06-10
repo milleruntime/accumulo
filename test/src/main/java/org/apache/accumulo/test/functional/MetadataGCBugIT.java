@@ -68,7 +68,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.junit.Test;
 
-public class MetadataRecoveryBugIT extends ConfigurableMacBase {
+public class MetadataGCBugIT extends ConfigurableMacBase {
 
   private static final int N = 1000; // number of rows per table
   private static final int COUNT = 5;
