@@ -22,26 +22,32 @@ import static org.apache.accumulo.core.conf.Property.TABLE_FILE_MAX;
 import static org.apache.accumulo.core.conf.Property.TABLE_MAJC_RATIO;
 import static org.apache.accumulo.core.conf.Property.TABLE_SPLIT_THRESHOLD;
 import static org.apache.accumulo.core.conf.Property.TSERV_WALOG_MAX_SIZE;
+import static org.junit.Assert.assertNull;
 
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.accumulo.core.Constants;
 import org.apache.accumulo.core.cli.BatchWriterOpts;
 import org.apache.accumulo.core.cli.ScannerOpts;
+import org.apache.accumulo.core.client.AccumuloException;
+import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.client.BatchDeleter;
 import org.apache.accumulo.core.client.BatchWriter;
 import org.apache.accumulo.core.client.BatchWriterConfig;
 import org.apache.accumulo.core.client.Connector;
 import org.apache.accumulo.core.client.Scanner;
 import org.apache.accumulo.core.client.TableNotFoundException;
+import org.apache.accumulo.core.client.ZooKeeperInstance;
 import org.apache.accumulo.core.client.admin.CompactionConfig;
 import org.apache.accumulo.core.client.admin.NewTableConfiguration;
 import org.apache.accumulo.core.conf.AccumuloConfiguration;
@@ -54,11 +60,15 @@ import org.apache.accumulo.core.metadata.MetadataTable;
 import org.apache.accumulo.core.metadata.RootTable;
 import org.apache.accumulo.core.metadata.schema.MetadataSchema;
 import org.apache.accumulo.core.security.Authorizations;
+import org.apache.accumulo.core.zookeeper.ZooUtil;
 import org.apache.accumulo.fate.util.UtilWaitThread;
+import org.apache.accumulo.fate.zookeeper.ZooLock;
 import org.apache.accumulo.minicluster.ServerType;
 import org.apache.accumulo.minicluster.impl.MiniAccumuloConfigImpl;
+import org.apache.accumulo.minicluster.impl.ProcessNotFoundException;
 import org.apache.accumulo.minicluster.impl.ProcessReference;
 import org.apache.accumulo.server.conf.ServerConfigurationFactory;
+import org.apache.accumulo.server.zookeeper.ZooReaderWriter;
 import org.apache.accumulo.test.TestIngest;
 import org.apache.accumulo.test.TestIngest.Opts;
 import org.apache.accumulo.test.VerifyIngest;
@@ -66,10 +76,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
+import org.apache.zookeeper.KeeperException;
 import org.junit.Test;
 
 public class MetadataGCBugIT extends ConfigurableMacBase {
 
+  private static final String OUR_SECRET = "itsreallysecret";
   private static final int N = 1000; // number of rows per table
   private static final int COUNT = 5;
   private static final BatchWriterOpts BWOPTS = new BatchWriterOpts();
@@ -82,6 +94,7 @@ public class MetadataGCBugIT extends ConfigurableMacBase {
 
   @Override
   public void configure(MiniAccumuloConfigImpl cfg, Configuration fsConf) {
+    cfg.setProperty(Property.INSTANCE_SECRET, OUR_SECRET);
     cfg.setProperty(TSERV_WALOG_MAX_SIZE, "1M");
     cfg.setProperty(TABLE_SPLIT_THRESHOLD, "10K");
     cfg.setProperty(TABLE_MAJC_RATIO, "1000");
@@ -93,6 +106,8 @@ public class MetadataGCBugIT extends ConfigurableMacBase {
 
   @Test
   public void test() throws Exception {
+    //killMacGc();
+
     Connector c = getConnector();
     FileSystem fs = getCluster().getFileSystem();
     Path basePath = getCluster().getTemporaryPath();
@@ -106,11 +121,13 @@ public class MetadataGCBugIT extends ConfigurableMacBase {
     // create lots of metadata tablets
     c.tableOperations().setProperty(MetadataTable.NAME, Property.TABLE_SPLIT_THRESHOLD.getKey(), "50K");
 
-    final SortedSet<Text> splits = getSplits();
+    //final SortedSet<Text> splits = getSplits();
+    Map<String, SortedSet<Text>> tableToSplitsMap = new HashMap<>();
 
     log.info("Creating {} tables", tableNames.length);
-    for (String t : tableNames)
-      bulkImport(c, t, fs, basePath, filePrefix, dirSuffix);
+    for (String t : tableNames) {
+      tableToSplitsMap.put(t, bulkImport(c, t, fs, basePath, filePrefix, dirSuffix));
+    }
     //createTablesLiveIngest(c, tableNames, splits);
 
     //BulkFileIT.printRootTable(c, new Range(), "MetadataRecoveryBugIT_test");
@@ -118,20 +135,30 @@ public class MetadataGCBugIT extends ConfigurableMacBase {
     //Map<String,WalStateManager.WalState> wals = WALSunnyDayIT._getWals(c);
     //log.info("Number of WALS = " + wals.size());
     log.info("First key of {} = {}", tableNames[0], getFirstKey(c, tableNames[0]));
+   // log.info("Starting GC");
+    //getCluster().start();
 
-    log.info("Number of MD splits = " + c.tableOperations().listSplits(MetadataTable.NAME).size());
+    tableToSplitsMap.forEach((t, s) -> {
+      try {
+        log.info("Number of MD splits = " + c.tableOperations().listSplits(MetadataTable.NAME).size());
+        log.info("Adding {} splits for {}", s.size(), t);
+        c.tableOperations().addSplits(t, s);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    });
 
     //c.tableOperations().compact(MetadataTable.NAME, new CompactionConfig().setWait(true));
     //log.info("MD disk usage = " + c.tableOperations().getDiskUsage(Collections.singleton(MetadataTable.NAME)));
     //printMD(c, new Range(), "MetadataRecoveryBugIT_test");
 
-    eliminateTabletServer();
-    log.info("Killed tserver. Now wait for balance");
+    //eliminateTabletServer();
+    log.info("wait for balance");
     c.instanceOperations().waitForBalance();
     //c.tableOperations().compact(MetadataTable.NAME, new CompactionConfig().setWait(true));
     //log.info("Compaction finished");
-    log.info("restarting...");
-    getCluster().getClusterControl().start(ServerType.TABLET_SERVER);
+    //log.info("restarting...");
+    //getCluster().getClusterControl().start(ServerType.TABLET_SERVER);
 
     printRootTable(c, new Range(), "MetadataRecoveryBugIT_test");
 
@@ -140,7 +167,8 @@ public class MetadataGCBugIT extends ConfigurableMacBase {
       try {
         scan = c.createScanner(MetadataTable.NAME, Authorizations.EMPTY);
         int num = c.tableOperations().listSplits(MetadataTable.NAME).size();
-        while (num > 5) {
+        log.info("Number of MD splits: {}", num);
+        while (num < 5) {
           int count = 0;
           log.info("Scanning MD...");
           for (Map.Entry<Key, Value> e : scan)
@@ -149,7 +177,7 @@ public class MetadataGCBugIT extends ConfigurableMacBase {
           log.info("MD entries = {} splits = {}", count, num);
           UtilWaitThread.sleepUninterruptibly(10, TimeUnit.SECONDS);
         }
-        log.info("Done Scanning MD");
+        log.info("Done Scanning MD. Splits got to {}", num);
       }catch (Exception e) {
         e.printStackTrace();
       }
@@ -158,9 +186,11 @@ public class MetadataGCBugIT extends ConfigurableMacBase {
 
     //verify(c, principal, tableName);
 
-    batchDeleteMutations(c, tableNames, splits);
+    //batchDeleteMutations(c, tableNames, splits);
 
     for (String tableName : tableNames) {
+      while(c.tableOperations().exists(tableName))
+        Thread.sleep(10_000);
       log.info("Delete table {}", tableName);
       c.tableOperations().delete(tableName);
     }
@@ -214,6 +244,23 @@ public class MetadataGCBugIT extends ConfigurableMacBase {
         System.out.println(MetadataSchema.DeletesSection.getRowPrefix() + q[q.length - 1]);
       }
     }
+  }
+
+  private void killMacGc() throws ProcessNotFoundException, InterruptedException, KeeperException {
+    // kill gc started by MAC
+    getCluster().killProcess(ServerType.GARBAGE_COLLECTOR,
+            getCluster().getProcesses().get(ServerType.GARBAGE_COLLECTOR).iterator().next());
+    // delete lock in zookeeper if there, this will allow next GC to start quickly
+    String path =
+            ZooUtil.getRoot(new ZooKeeperInstance(getCluster().getClientConfig())) + Constants.ZGC_LOCK;
+    ZooReaderWriter zk = new ZooReaderWriter(cluster.getZooKeepers(), 30000, OUR_SECRET);
+    try {
+      ZooLock.deleteLock(zk, path);
+    } catch (IllegalStateException e) {
+      log.error("Unable to delete ZooLock for mini accumulo-gc", e);
+    }
+
+    assertNull(getCluster().getProcesses().get(ServerType.GARBAGE_COLLECTOR));
   }
 
   private Key getFirstKey(Connector c, String tableName) throws Exception {
@@ -272,7 +319,7 @@ public class MetadataGCBugIT extends ConfigurableMacBase {
     return splits;
   }
 
-  private void bulkImport(Connector c, String tableName, FileSystem fs,
+  private TreeSet<Text> bulkImport(Connector c, String tableName, FileSystem fs,
                           Path basePath, String filePrefix, String dirSuffix) throws Exception {
     Path base = new Path(basePath, "testBulkFail_" + dirSuffix);
     fs.delete(base, true);
@@ -292,22 +339,25 @@ public class MetadataGCBugIT extends ConfigurableMacBase {
     opts.conf = new Configuration(false);
     opts.fs = fs;
     opts.numsplits = 999;
-    opts.createTable = true;
+    opts.createTable = false;
     String fileFormat = filePrefix + "rf%02d";
     for (int i = 0; i < COUNT; i++) {
       opts.outputFile = new Path(files, String.format(fileFormat, i)).toString();
       opts.startRow = N * i;
       TestIngest.ingest(c, fs, opts, BWOPTS);
     }
-    opts.outputFile = new Path(files, String.format(fileFormat, N)).toString();
-    opts.startRow = N;
-    opts.rows = 1;
+    //opts.outputFile = new Path(files, String.format(fileFormat, N)).toString();
+    //opts.startRow = N * COUNT;
+    //opts.rows = 1;
     // create an rfile with one entry, there was a bug with this:
-    TestIngest.ingest(c, fs, opts, BWOPTS);
+    //TestIngest.ingest(c, fs, opts, BWOPTS);
 
+    log.info("Creating table {}", tableName);
+    c.tableOperations().create(tableName);
     log.info("Bulk import {} files to {}", COUNT, tableName);
     c.tableOperations().importDirectory(tableName, files.toString(), bulkFailures.toString(),
             false);
+    return TestIngest.getSplitPoints(0, N * COUNT, opts.numsplits);
   }
 
   private void verify(Connector c, String principal, String tableName) throws Exception {
